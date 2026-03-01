@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { makeDraggable } from './makeDraggable.js';
 
 export const metadata = {
@@ -18,92 +19,6 @@ const POLL_MS = 2000;
 // --- User settings (persisted) ---
 const STORAGE_MINUTES_KEY = 'n3fjp_display_minutes';
 const STORAGE_COLOR_KEY = 'n3fjp_line_color';
-
-function addMinimizeToggle(element, storageKey) {
-  if (!element) return;
-
-  const minimizeKey = storageKey + '-minimized';
-  const header = element.firstElementChild;
-  if (!header) return;
-
-  const existingTitle = header.querySelector('[data-drag-handle="true"]');
-  const existingButton = header.querySelector('.n3fjp-minimize-btn');
-  const existingWrapper = element.querySelector('.n3fjp-panel-content');
-
-  if (existingTitle) {
-    existingTitle.style.fontFamily = "'JetBrains Mono', monospace";
-    existingTitle.style.fontSize = '13px';
-    existingTitle.style.fontWeight = '700';
-    existingTitle.style.color = '#00b4ff';
-  }
-
-  if (existingButton && existingWrapper) {
-    const isMinimized = localStorage.getItem(minimizeKey) === 'true';
-    existingWrapper.style.display = isMinimized ? 'none' : 'block';
-    existingButton.innerHTML = isMinimized ? '▶' : '▼';
-    return;
-  }
-
-  const content = Array.from(element.children).slice(1);
-  const contentWrapper = document.createElement('div');
-  contentWrapper.className = 'n3fjp-panel-content';
-  content.forEach((child) => contentWrapper.appendChild(child));
-  element.appendChild(contentWrapper);
-
-  const minimizeBtn = document.createElement('button');
-  minimizeBtn.className = 'n3fjp-minimize-btn';
-  minimizeBtn.innerHTML = '▼';
-  minimizeBtn.style.cssText = `
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    min-width: 16px;
-    height: 16px;
-    background: none;
-    border: none;
-    color: #888;
-    cursor: pointer;
-    user-select: none;
-    padding: 2px 4px;
-    margin: 0;
-    font-size: 10px;
-    line-height: 1;
-  `;
-  minimizeBtn.title = 'Minimize/Maximize';
-  minimizeBtn.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-  });
-
-  header.style.display = 'flex';
-  header.style.justifyContent = 'space-between';
-  header.style.alignItems = 'center';
-  const title = document.createElement('span');
-  title.textContent = header.textContent.replace(/[▼▶]/g, '').trim();
-  title.dataset.dragHandle = 'true';
-  title.style.flex = '1';
-  title.style.cursor = 'grab';
-  title.style.userSelect = 'none';
-  title.style.fontFamily = "'JetBrains Mono', monospace";
-  title.style.fontSize = '13px';
-  title.style.fontWeight = '700';
-  title.style.color = '#00b4ff';
-  header.textContent = '';
-  header.appendChild(title);
-  header.appendChild(minimizeBtn);
-
-  const isMinimized = localStorage.getItem(minimizeKey) === 'true';
-  contentWrapper.style.display = isMinimized ? 'none' : 'block';
-  minimizeBtn.innerHTML = isMinimized ? '▶' : '▼';
-
-  minimizeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const hidden = contentWrapper.style.display === 'none';
-    contentWrapper.style.display = hidden ? 'block' : 'none';
-    minimizeBtn.innerHTML = hidden ? '▼' : '▶';
-    localStorage.setItem(minimizeKey, String(!hidden));
-  });
-}
 
 export function useLayer({ enabled = false, opacity = 0.9, map = null }) {
   const [layersRef, setLayersRef] = useState([]);
@@ -213,7 +128,10 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null }) {
         } catch {}
       }
 
-      addMinimizeToggle(container, 'n3fjp-position');
+      addMinimizeToggle(container, 'n3fjp-position', {
+        contentClassName: 'n3fjp-panel-content',
+        buttonClassName: 'n3fjp-minimize-btn',
+      });
       makeDraggable(container, 'n3fjp-position');
     }, 150);
 

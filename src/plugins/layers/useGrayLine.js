@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { makeDraggable } from './makeDraggable.js';
 
 /**
@@ -209,91 +210,6 @@ function generateTerminatorLine(date, solarAltitude = 0, numPoints = 360) {
 
 // Make control panel draggable and minimizable
 
-function addMinimizeToggle(element, storageKey) {
-  if (!element) return;
-
-  const minimizeKey = storageKey + '-minimized';
-  const header = element.querySelector('div:first-child');
-  if (!header) return;
-
-  const content = Array.from(element.children).slice(1);
-  const contentWrapper = document.createElement('div');
-  contentWrapper.className = 'grayline-panel-content';
-  content.forEach((child) => contentWrapper.appendChild(child));
-  element.appendChild(contentWrapper);
-
-  const minimizeBtn = document.createElement('button');
-  minimizeBtn.className = 'grayline-minimize-btn';
-  minimizeBtn.innerHTML = '▼';
-  minimizeBtn.style.cssText = `
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    min-width: 16px;
-    height: 16px;
-    background: none;
-    border: none;
-    color: #888;
-    cursor: pointer;
-    user-select: none;
-    padding: 2px 4px;
-    margin: 0;
-    font-size: 10px;
-    line-height: 1;
-  `;
-  minimizeBtn.title = 'Minimize/Maximize';
-
-  minimizeBtn.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-  });
-
-  header.style.display = 'flex';
-  header.style.justifyContent = 'space-between';
-  header.style.alignItems = 'center';
-  const title = document.createElement('span');
-  title.textContent = header.textContent;
-  title.dataset.dragHandle = 'true';
-  title.style.flex = '1';
-  title.style.cursor = 'grab';
-  title.style.userSelect = 'none';
-  title.style.fontFamily = "'JetBrains Mono', monospace";
-  title.style.fontSize = '13px';
-  title.style.fontWeight = '700';
-  title.style.color = '#00b4ff';
-  header.textContent = '';
-  header.appendChild(title);
-  header.appendChild(minimizeBtn);
-
-  const isMinimized = localStorage.getItem(minimizeKey) === 'true';
-  if (isMinimized) {
-    contentWrapper.style.display = 'none';
-    minimizeBtn.innerHTML = '▶';
-    element.style.cursor = 'pointer';
-  }
-
-  const toggle = () => {
-    const isCurrentlyMinimized = contentWrapper.style.display === 'none';
-
-    if (isCurrentlyMinimized) {
-      contentWrapper.style.display = 'block';
-      minimizeBtn.innerHTML = '▼';
-      element.style.cursor = 'default';
-      localStorage.setItem(minimizeKey, 'false');
-    } else {
-      contentWrapper.style.display = 'none';
-      minimizeBtn.innerHTML = '▶';
-      element.style.cursor = 'pointer';
-      localStorage.setItem(minimizeKey, 'true');
-    }
-  };
-
-  minimizeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggle();
-  });
-}
-
 export function useLayer({ enabled = false, opacity = 0.5, map = null }) {
   const [layers, setLayers] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -447,7 +363,10 @@ export function useLayer({ enabled = false, opacity = 0.5, map = null }) {
         }
 
         makeDraggable(container, 'grayline-position');
-        addMinimizeToggle(container, 'grayline-position');
+        addMinimizeToggle(container, 'grayline-position', {
+          contentClassName: 'grayline-panel-content',
+          buttonClassName: 'grayline-minimize-btn',
+        });
       }
 
       // Add event listeners

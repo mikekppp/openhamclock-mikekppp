@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { makeDraggable } from './makeDraggable.js';
 
 /**
@@ -169,35 +170,6 @@ function buildMUFCanvas(stations) {
   sctx.drawImage(canvas, 0, 0, smooth.width, smooth.height);
 
   return smooth.toDataURL('image/png');
-}
-
-function addMinimizeToggle(container, storageKey) {
-  const content = container.querySelector('.muf-panel-content');
-  const btn = container.querySelector('.muf-minimize-btn');
-  const title = container.querySelector('div > div:first-child > span');
-  if (!content || !btn) return;
-  if (title) {
-    title.dataset.dragHandle = 'true';
-    title.style.cursor = 'grab';
-    title.style.userSelect = 'none';
-    title.style.fontFamily = "'JetBrains Mono', monospace";
-    title.style.fontSize = '13px';
-    title.style.fontWeight = '700';
-    title.style.color = '#00b4ff';
-  }
-  const key = storageKey + '-minimized';
-  const isMinimized = localStorage.getItem(key) === 'true';
-  content.style.display = isMinimized ? 'none' : 'block';
-  btn.textContent = isMinimized ? '▶' : '▼';
-  if (btn.dataset.toggleBound === 'true') return;
-  btn.dataset.toggleBound = 'true';
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const hidden = content.style.display === 'none';
-    content.style.display = hidden ? 'block' : 'none';
-    btn.textContent = hidden ? '▼' : '▶';
-    localStorage.setItem(key, !hidden);
-  });
 }
 
 // ── Layer hook ──────────────────────────────────────────────────────
@@ -386,7 +358,10 @@ export function useLayer({ map, enabled, opacity }) {
     setTimeout(() => {
       const container = controlRef.current?._container;
       if (!container) return;
-      addMinimizeToggle(container, 'muf-map-position');
+      addMinimizeToggle(container, 'muf-map-position', {
+        contentClassName: 'muf-panel-content',
+        buttonClassName: 'muf-minimize-btn',
+      });
       makeDraggable(container, 'muf-map-position');
     }, 150);
   }, [enabled, map, stations, loading]);

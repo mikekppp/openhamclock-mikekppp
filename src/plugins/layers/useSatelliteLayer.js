@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as satellite from 'satellite.js';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { replicatePoint, replicatePath } from '../../utils/geo.js';
 
 export const metadata = {
@@ -185,14 +186,15 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
       <div class="sat-data-window-title" style="display:flex; justify-content:space-between; align-items:center;
                   cursor:grab; user-select:none;
                   padding: 8px 10px; border-bottom: 1px solid #004444; background: rgba(0,40,40,0.6);">
-        <span style="font-family: 'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:#00b4ff; letter-spacing:0.05em;">
+        <span data-drag-handle="true" style="font-family: 'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:#00b4ff; letter-spacing:0.05em;">
           🛰 ${activeSats.length} SAT${activeSats.length !== 1 ? 'S' : ''}
         </span>
-        <button onclick="window.__satWinToggleMinimize()"
+        <button class="sat-data-window-minimize"
+                onclick="window.__satWinToggleMinimize()"
                 title="${winMinimized ? 'Expand' : 'Minimize'}"
-                style="background:none; border:1px solid #004444; color:#00cccc; cursor:pointer;
-                       font-size:13px; line-height:1; padding:1px 6px; border-radius:3px;">
-          ${winMinimized ? '▲' : '▼'}
+                style="background:none; border:none; color:#888; cursor:pointer;
+                       font-size:10px; line-height:1; padding:2px 4px; margin:0;">
+          ${winMinimized ? '▶' : '▼'}
         </button>
       </div>
     `;
@@ -200,7 +202,14 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
     if (winMinimized) {
       win.style.maxHeight = '';
       win.style.overflowY = 'hidden';
-      win.innerHTML = titleBar;
+      win.innerHTML = `${titleBar}<div class="sat-data-window-content"></div>`;
+      addMinimizeToggle(win, 'sat-data-window', {
+        contentClassName: 'sat-data-window-content',
+        buttonClassName: 'sat-data-window-minimize',
+        getIsMinimized: () => winMinimized,
+        onToggle: setWinMinimized,
+        persist: false,
+      });
       return;
     }
 
@@ -220,6 +229,7 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
 
     win.innerHTML =
       titleBar +
+      `<div class="sat-data-window-content">` +
       clearAllBtn +
       `<div style="padding: 0 12px 8px;">` +
       activeSats
@@ -250,7 +260,15 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
       `;
         })
         .join('') +
-      `</div>`;
+      `</div></div>`;
+
+    addMinimizeToggle(win, 'sat-data-window', {
+      contentClassName: 'sat-data-window-content',
+      buttonClassName: 'sat-data-window-minimize',
+      getIsMinimized: () => winMinimized,
+      onToggle: setWinMinimized,
+      persist: false,
+    });
   };
 
   const renderSatellites = () => {

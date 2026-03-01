@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { makeDraggable } from './makeDraggable.js';
 
 /**
@@ -19,101 +20,6 @@ import { makeDraggable } from './makeDraggable.js';
 
 // Make control panel draggable by its title and save position
 // Registry so a second call for the same storageKey cancels the previous listeners.
-
-// Add minimize/maximize functionality to control panels
-function addMinimizeToggle(element, storageKey) {
-  if (!element) return;
-
-  const minimizeKey = storageKey + '-minimized';
-
-  // Create minimize button
-  const header = element.querySelector('div:first-child');
-  if (!header) return;
-
-  // Wrap content (everything except header)
-  const content = Array.from(element.children).slice(1);
-  const contentWrapper = document.createElement('div');
-  contentWrapper.className = 'rbn-panel-content';
-  content.forEach((child) => contentWrapper.appendChild(child));
-  element.appendChild(contentWrapper);
-
-  // Add minimize button to header
-  const minimizeBtn = document.createElement('button');
-  minimizeBtn.className = 'rbn-minimize-btn';
-  minimizeBtn.innerHTML = '▼';
-  minimizeBtn.style.cssText = `
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    min-width: 16px;
-    height: 16px;
-    background: none;
-    border: none;
-    color: #888;
-    cursor: pointer;
-    user-select: none;
-    padding: 2px 4px;
-    margin: 0;
-    font-size: 10px;
-    line-height: 1;
-  `;
-  minimizeBtn.title = 'Minimize/Maximize';
-
-  minimizeBtn.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-  });
-
-  header.style.display = 'flex';
-  header.style.justifyContent = 'space-between';
-  header.style.alignItems = 'center';
-  const title = document.createElement('span');
-  title.textContent = header.textContent;
-  title.dataset.dragHandle = 'true';
-  title.style.flex = '1';
-  title.style.cursor = 'grab';
-  title.style.userSelect = 'none';
-  title.style.fontFamily = "'JetBrains Mono', monospace";
-  title.style.fontSize = '13px';
-  title.style.fontWeight = '700';
-  title.style.color = '#00b4ff';
-  header.textContent = '';
-  header.appendChild(title);
-  header.appendChild(minimizeBtn);
-
-  // Load saved state
-  const isMinimized = localStorage.getItem(minimizeKey) === 'true';
-  if (isMinimized) {
-    contentWrapper.style.display = 'none';
-    minimizeBtn.innerHTML = '▶';
-    element.style.cursor = 'pointer';
-  }
-
-  // Toggle function
-  const toggle = () => {
-    const isCurrentlyMinimized = contentWrapper.style.display === 'none';
-
-    if (isCurrentlyMinimized) {
-      // Expand
-      contentWrapper.style.display = 'block';
-      minimizeBtn.innerHTML = '▼';
-      element.style.cursor = 'default';
-      localStorage.setItem(minimizeKey, 'false');
-    } else {
-      // Minimize
-      contentWrapper.style.display = 'none';
-      minimizeBtn.innerHTML = '▶';
-      element.style.cursor = 'pointer';
-      localStorage.setItem(minimizeKey, 'true');
-    }
-  };
-
-  // Click button to toggle
-  minimizeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggle();
-  });
-}
 
 export const metadata = {
   id: 'rbn',
@@ -688,7 +594,10 @@ export function useLayer({
         }
 
         makeDraggable(controlElement, 'rbn-panel-position');
-        addMinimizeToggle(controlElement, 'rbn-panel');
+        addMinimizeToggle(controlElement, 'rbn-panel', {
+          contentClassName: 'rbn-panel-content',
+          buttonClassName: 'rbn-minimize-btn',
+        });
       }
     }, 150);
 

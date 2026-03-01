@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { makeDraggable } from './makeDraggable.js';
 import { getBandFromFreq } from '../../utils/callsign.js';
 
@@ -199,110 +200,6 @@ function calculatePropagationScore(spots) {
   const strongScore = (strongSignals / pathCount) * 30;
 
   return Math.round(snrScore + countScore + strongScore);
-}
-
-// Add minimize/maximize functionality to control panels
-function addMinimizeToggle(element, storageKey) {
-  if (!element) {
-    console.warn('[WSPR] addMinimizeToggle: element is null/undefined for', storageKey);
-    return;
-  }
-
-  const minimizeKey = storageKey + '-minimized';
-
-  // Create minimize button
-  // Use firstElementChild instead of querySelector
-  const header = element.firstElementChild;
-  if (!header) {
-    console.warn('[WSPR] No header found for minimize toggle on', storageKey, 'children:', element.children.length);
-    return;
-  }
-
-  console.log('[WSPR] Adding minimize toggle to', storageKey, 'header:', header.innerHTML.substring(0, 50));
-
-  // Wrap content (everything except header)
-  const content = Array.from(element.children).slice(1);
-  const contentWrapper = document.createElement('div');
-  contentWrapper.className = 'wspr-panel-content';
-  content.forEach((child) => contentWrapper.appendChild(child));
-  element.appendChild(contentWrapper);
-
-  // Add minimize button to header
-  const minimizeBtn = document.createElement('button');
-  minimizeBtn.className = 'wspr-minimize-btn';
-  minimizeBtn.innerHTML = '▼';
-  minimizeBtn.style.cssText = `
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    min-width: 16px;
-    height: 16px;
-    background: none;
-    border: none;
-    color: #888;
-    cursor: pointer;
-    user-select: none;
-    padding: 2px 4px;
-    margin: 0;
-    font-size: 10px;
-    line-height: 1;
-  `;
-  minimizeBtn.title = 'Minimize/Maximize';
-
-  minimizeBtn.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-  });
-
-  header.style.display = 'flex';
-  header.style.justifyContent = 'space-between';
-  header.style.alignItems = 'center';
-  const title = document.createElement('span');
-  title.textContent = header.textContent;
-  title.dataset.dragHandle = 'true';
-  title.style.flex = '1';
-  title.style.cursor = 'grab';
-  title.style.userSelect = 'none';
-  title.style.fontFamily = "'JetBrains Mono', monospace";
-  title.style.fontSize = '13px';
-  title.style.fontWeight = '700';
-  title.style.color = '#00b4ff';
-  header.textContent = '';
-  header.appendChild(title);
-  header.appendChild(minimizeBtn);
-
-  // Load saved state
-  const isMinimized = localStorage.getItem(minimizeKey) === 'true';
-  if (isMinimized) {
-    contentWrapper.style.display = 'none';
-    minimizeBtn.innerHTML = '▶';
-    element.style.cursor = 'pointer';
-  }
-
-  // Toggle function
-  const toggle = () => {
-    const isCurrentlyMinimized = contentWrapper.style.display === 'none';
-
-    if (isCurrentlyMinimized) {
-      // Expand
-      contentWrapper.style.display = 'block';
-      minimizeBtn.innerHTML = '▼';
-      element.style.cursor = 'default';
-      localStorage.setItem(minimizeKey, 'false');
-    } else {
-      // Minimize
-      contentWrapper.style.display = 'none';
-      minimizeBtn.innerHTML = '▶';
-      element.style.cursor = 'pointer';
-      localStorage.setItem(minimizeKey, 'true');
-    }
-  };
-
-  // Click button to toggle
-  minimizeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggle();
-  });
 }
 
 export function useLayer({ enabled = false, map = null, callsign, locator, lowMemoryMode = false, mapBandFilter }) {
@@ -628,7 +525,10 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
         }
 
         makeDraggable(container, 'wspr-filter-position');
-        addMinimizeToggle(container, 'wspr-filter-position');
+        addMinimizeToggle(container, 'wspr-filter-position', {
+          contentClassName: 'wspr-panel-content',
+          buttonClassName: 'wspr-minimize-btn',
+        });
       }
     }, 150);
 
@@ -749,7 +649,10 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
         }
 
         makeDraggable(container, 'wspr-stats-position');
-        addMinimizeToggle(container, 'wspr-stats-position');
+        addMinimizeToggle(container, 'wspr-stats-position', {
+          contentClassName: 'wspr-panel-content',
+          buttonClassName: 'wspr-minimize-btn',
+        });
       }
     }, 150);
 
@@ -804,7 +707,10 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
         }
 
         makeDraggable(container, 'wspr-legend-position');
-        addMinimizeToggle(container, 'wspr-legend-position');
+        addMinimizeToggle(container, 'wspr-legend-position', {
+          contentClassName: 'wspr-panel-content',
+          buttonClassName: 'wspr-minimize-btn',
+        });
       }
     }, 150);
 
@@ -857,7 +763,10 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
         }
 
         makeDraggable(container, 'wspr-chart-position');
-        addMinimizeToggle(container, 'wspr-chart-position');
+        addMinimizeToggle(container, 'wspr-chart-position', {
+          contentClassName: 'wspr-panel-content',
+          buttonClassName: 'wspr-minimize-btn',
+        });
       }
     }, 150);
 

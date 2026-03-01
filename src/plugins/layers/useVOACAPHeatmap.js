@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { addMinimizeToggle } from './addMinimizeToggle.js';
 import { makeDraggable } from './makeDraggable.js';
 
 /**
@@ -85,42 +86,6 @@ function reliabilityColor(r) {
     alpha = 0.85;
   }
   return { color: `rgb(${red},${green},${blue})`, alpha };
-}
-
-// Minimize/maximize toggle
-function addMinimizeToggle(container, storageKey) {
-  if (!container) return;
-
-  const contentWrapper = container.querySelector('.voacap-panel-content');
-  const minimizeBtn = container.querySelector('.voacap-minimize-btn');
-  const title = container.querySelector('div > div:first-child > span');
-  if (!contentWrapper || !minimizeBtn) return;
-  if (title) {
-    title.dataset.dragHandle = 'true';
-    title.style.cursor = 'grab';
-    title.style.userSelect = 'none';
-    title.style.fontFamily = "'JetBrains Mono', monospace";
-    title.style.fontSize = '13px';
-    title.style.fontWeight = '700';
-    title.style.color = '#00b4ff';
-  }
-
-  const minKey = storageKey + '-minimized';
-  const isMinimized = localStorage.getItem(minKey) === 'true';
-
-  contentWrapper.style.display = isMinimized ? 'none' : 'block';
-  minimizeBtn.textContent = isMinimized ? '▶' : '▼';
-
-  if (minimizeBtn.dataset.toggleBound === 'true') return;
-  minimizeBtn.dataset.toggleBound = 'true';
-
-  minimizeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const hidden = contentWrapper.style.display === 'none';
-    contentWrapper.style.display = hidden ? 'block' : 'none';
-    minimizeBtn.textContent = hidden ? '▼' : '▶';
-    localStorage.setItem(minKey, !hidden);
-  });
 }
 
 export function useLayer({ map, enabled, opacity, locator }) {
@@ -362,7 +327,10 @@ export function useLayer({ map, enabled, opacity, locator }) {
         } catch (e) {}
       }
 
-      addMinimizeToggle(container, 'voacap-heatmap-position');
+      addMinimizeToggle(container, 'voacap-heatmap-position', {
+        contentClassName: 'voacap-panel-content',
+        buttonClassName: 'voacap-minimize-btn',
+      });
       makeDraggable(container, 'voacap-heatmap-position');
 
       const bandSelect = document.getElementById('voacap-band-select');
