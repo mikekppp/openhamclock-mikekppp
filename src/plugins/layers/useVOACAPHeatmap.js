@@ -93,15 +93,26 @@ function addMinimizeToggle(container, storageKey) {
 
   const contentWrapper = container.querySelector('.voacap-panel-content');
   const minimizeBtn = container.querySelector('.voacap-minimize-btn');
+  const title = container.querySelector('div > div:first-child > span');
   if (!contentWrapper || !minimizeBtn) return;
+  if (title) {
+    title.dataset.dragHandle = 'true';
+    title.style.cursor = 'grab';
+    title.style.userSelect = 'none';
+    title.style.fontFamily = "'JetBrains Mono', monospace";
+    title.style.fontSize = '13px';
+    title.style.fontWeight = '700';
+    title.style.color = '#00b4ff';
+  }
 
   const minKey = storageKey + '-minimized';
   const isMinimized = localStorage.getItem(minKey) === 'true';
 
-  if (isMinimized) {
-    contentWrapper.style.display = 'none';
-    minimizeBtn.textContent = '▶';
-  }
+  contentWrapper.style.display = isMinimized ? 'none' : 'block';
+  minimizeBtn.textContent = isMinimized ? '▶' : '▼';
+
+  if (minimizeBtn.dataset.toggleBound === 'true') return;
+  minimizeBtn.dataset.toggleBound = 'true';
 
   minimizeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -250,7 +261,7 @@ export function useLayer({ map, enabled, opacity, callsign, locator }) {
             backdrop-filter: blur(8px);
           ">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="color: #ffaa00; font-weight: 700; font-size: 12px;">🌐 VOACAP Heatmap</span>
+              <span data-drag-handle="true" style="color: #00b4ff; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; cursor: grab; user-select: none;">🌐 VOACAP Heatmap</span>
               <button class="voacap-minimize-btn" style="
                 background: none; border: none; color: #888; font-size: 10px;
                 cursor: pointer; padding: 2px 4px;
@@ -352,8 +363,8 @@ export function useLayer({ map, enabled, opacity, callsign, locator }) {
         } catch (e) {}
       }
 
-      makeDraggable(container, 'voacap-heatmap-position');
       addMinimizeToggle(container, 'voacap-heatmap-position');
+      makeDraggable(container, 'voacap-heatmap-position');
 
       const bandSelect = document.getElementById('voacap-band-select');
       const gridSelect = document.getElementById('voacap-grid-select');

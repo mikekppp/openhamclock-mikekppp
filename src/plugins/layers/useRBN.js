@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { makeDraggable } from "./makeDraggable.js";
+import { makeDraggable } from './makeDraggable.js';
 
 /**
  * Reverse Beacon Network (RBN) Plugin v1.0.0
@@ -17,7 +17,7 @@ import { makeDraggable } from "./makeDraggable.js";
  * Update interval: 10 seconds
  */
 
-// Make control panel draggable with CTRL+drag and save position
+// Make control panel draggable by its title and save position
 // Registry so a second call for the same storageKey cancels the previous listeners.
 
 // Add minimize/maximize functionality to control panels
@@ -38,31 +38,47 @@ function addMinimizeToggle(element, storageKey) {
   element.appendChild(contentWrapper);
 
   // Add minimize button to header
-  const minimizeBtn = document.createElement('span');
+  const minimizeBtn = document.createElement('button');
   minimizeBtn.className = 'rbn-minimize-btn';
   minimizeBtn.innerHTML = '▼';
   minimizeBtn.style.cssText = `
-    float: right;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    background: none;
+    border: none;
+    color: #888;
     cursor: pointer;
     user-select: none;
-    padding: 0 4px;
-    margin: -2px -4px 0 0;
+    padding: 2px 4px;
+    margin: 0;
     font-size: 10px;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    line-height: 1;
   `;
   minimizeBtn.title = 'Minimize/Maximize';
 
-  minimizeBtn.addEventListener('mouseenter', () => {
-    minimizeBtn.style.opacity = '1';
-  });
-  minimizeBtn.addEventListener('mouseleave', () => {
-    minimizeBtn.style.opacity = '0.7';
+  minimizeBtn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
   });
 
   header.style.display = 'flex';
   header.style.justifyContent = 'space-between';
   header.style.alignItems = 'center';
+  const title = document.createElement('span');
+  title.textContent = header.textContent;
+  title.dataset.dragHandle = 'true';
+  title.style.flex = '1';
+  title.style.cursor = 'grab';
+  title.style.userSelect = 'none';
+  title.style.fontFamily = "'JetBrains Mono', monospace";
+  title.style.fontSize = '13px';
+  title.style.fontWeight = '700';
+  title.style.color = '#00b4ff';
+  header.textContent = '';
+  header.appendChild(title);
   header.appendChild(minimizeBtn);
 
   // Load saved state
@@ -74,10 +90,7 @@ function addMinimizeToggle(element, storageKey) {
   }
 
   // Toggle function
-  const toggle = (e) => {
-    // Don't toggle if CTRL is held (for dragging)
-    if (e && e.ctrlKey) return;
-
+  const toggle = () => {
     const isCurrentlyMinimized = contentWrapper.style.display === 'none';
 
     if (isCurrentlyMinimized) {
@@ -95,17 +108,10 @@ function addMinimizeToggle(element, storageKey) {
     }
   };
 
-  // Click header to toggle (except on button itself)
-  header.addEventListener('click', (e) => {
-    if (e.target === header || e.target.tagName === 'DIV') {
-      toggle(e);
-    }
-  });
-
   // Click button to toggle
   minimizeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggle(e);
+    toggle();
   });
 }
 
@@ -560,7 +566,7 @@ export function useLayer({
       div.style.border = '1px solid var(--border-color)';
 
       div.innerHTML = `
-        <div style="margin-bottom: 8px;">
+        <div style="margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #00b4ff;">
           <b>📡 RBN: ${callsign}</b>
         </div>
         <div id="rbn-stats-display" style="margin-bottom: 8px; color: var(--text-secondary);">

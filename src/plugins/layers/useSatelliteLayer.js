@@ -141,13 +141,14 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
       let isDragging = false;
 
       win.onmousedown = (e) => {
-        if (e.ctrlKey) {
-          isDragging = true;
-          win.style.cursor = 'move';
-          if (map.dragging) map.dragging.disable();
-          e.preventDefault();
-          e.stopPropagation();
-        }
+        if (e.button !== 0) return;
+        if (!e.target.closest('.sat-data-window-title')) return;
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        win.style.cursor = 'move';
+        if (map.dragging) map.dragging.disable();
+        e.preventDefault();
+        e.stopPropagation();
       };
 
       window.onmousemove = (e) => {
@@ -181,9 +182,10 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
     window.__satWinToggleMinimize = () => setWinMinimized((prev) => !prev);
 
     const titleBar = `
-      <div style="display:flex; justify-content:space-between; align-items:center;
+      <div class="sat-data-window-title" style="display:flex; justify-content:space-between; align-items:center;
+                  cursor:grab; user-select:none;
                   padding: 8px 10px; border-bottom: 1px solid #004444; background: rgba(0,40,40,0.6);">
-        <span style="font-size:11px; color:#00ffff; letter-spacing:0.05em;">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:#00b4ff; letter-spacing:0.05em;">
           🛰 ${activeSats.length} SAT${activeSats.length !== 1 ? 'S' : ''}
         </span>
         <button onclick="window.__satWinToggleMinimize()"
@@ -212,7 +214,7 @@ export const useLayer = ({ map, enabled, satellites, setSatellites, opacity, con
                        padding: 4px 10px; font-size: 10px; border-radius: 3px; font-weight: bold; width: 100%;">
           CLEAR ALL FOOTPRINTS
         </button>
-        <span style="font-size: 9px; color: #888;">Ctrl + Drag to move</span>
+        <span style="font-size: 9px; color: #888;">Drag title to move</span>
       </div>
     `;
 

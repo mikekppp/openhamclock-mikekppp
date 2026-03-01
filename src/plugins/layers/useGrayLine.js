@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { makeDraggable } from "./makeDraggable.js";
+import { makeDraggable } from './makeDraggable.js';
 
 /**
  * Gray Line Propagation Overlay Plugin v1.0.1
@@ -237,31 +237,47 @@ function addMinimizeToggle(element, storageKey) {
   content.forEach((child) => contentWrapper.appendChild(child));
   element.appendChild(contentWrapper);
 
-  const minimizeBtn = document.createElement('span');
+  const minimizeBtn = document.createElement('button');
   minimizeBtn.className = 'grayline-minimize-btn';
   minimizeBtn.innerHTML = '▼';
   minimizeBtn.style.cssText = `
-    float: right;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    background: none;
+    border: none;
+    color: #888;
     cursor: pointer;
     user-select: none;
-    padding: 0 4px;
-    margin: -2px -4px 0 0;
+    padding: 2px 4px;
+    margin: 0;
     font-size: 10px;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    line-height: 1;
   `;
   minimizeBtn.title = 'Minimize/Maximize';
 
-  minimizeBtn.addEventListener('mouseenter', () => {
-    minimizeBtn.style.opacity = '1';
-  });
-  minimizeBtn.addEventListener('mouseleave', () => {
-    minimizeBtn.style.opacity = '0.7';
+  minimizeBtn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
   });
 
   header.style.display = 'flex';
   header.style.justifyContent = 'space-between';
   header.style.alignItems = 'center';
+  const title = document.createElement('span');
+  title.textContent = header.textContent;
+  title.dataset.dragHandle = 'true';
+  title.style.flex = '1';
+  title.style.cursor = 'grab';
+  title.style.userSelect = 'none';
+  title.style.fontFamily = "'JetBrains Mono', monospace";
+  title.style.fontSize = '13px';
+  title.style.fontWeight = '700';
+  title.style.color = '#00b4ff';
+  header.textContent = '';
+  header.appendChild(title);
   header.appendChild(minimizeBtn);
 
   const isMinimized = localStorage.getItem(minimizeKey) === 'true';
@@ -271,9 +287,7 @@ function addMinimizeToggle(element, storageKey) {
     element.style.cursor = 'pointer';
   }
 
-  const toggle = (e) => {
-    if (e && e.ctrlKey) return;
-
+  const toggle = () => {
     const isCurrentlyMinimized = contentWrapper.style.display === 'none';
 
     if (isCurrentlyMinimized) {
@@ -289,15 +303,9 @@ function addMinimizeToggle(element, storageKey) {
     }
   };
 
-  header.addEventListener('click', (e) => {
-    if (e.target === header || e.target.tagName === 'DIV') {
-      toggle(e);
-    }
-  });
-
   minimizeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggle(e);
+    toggle();
   });
 }
 
@@ -394,7 +402,7 @@ export function useLayer({ enabled = false, opacity = 0.5, map = null }) {
         const timeStr = now.toUTCString();
 
         container.innerHTML = `
-          <div style="font-weight: bold; margin-bottom: 8px; font-size: 12px;">🌅 Gray Line</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-weight: 700; margin-bottom: 8px; font-size: 13px; color: #00b4ff;">🌅 Gray Line</div>
           
           <div style="margin-bottom: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 3px;">
             <div style="font-size: 9px; opacity: 0.7; margin-bottom: 2px;">UTC TIME</div>

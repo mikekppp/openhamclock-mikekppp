@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { makeDraggable } from "./makeDraggable.js";
+import { makeDraggable } from './makeDraggable.js';
 
 // Lightning Detection Plugin - Real-time lightning strike visualization
 // Data source: Blitzortung.org WebSocket API
@@ -64,7 +64,7 @@ function getStrikeColor(ageMinutes) {
   return '#8B4513'; // Brown (very old, >30 min)
 }
 
-// Make control draggable with CTRL+drag
+// Make control draggable by its title
 // Registry so a second call for the same storageKey cancels the previous listeners.
 
 // Add minimize/maximize toggle
@@ -74,6 +74,22 @@ function addMinimizeToggle(element, storageKey) {
   const minimizeKey = storageKey + '-minimized';
   const header = element.firstElementChild;
   if (!header) return;
+  const existingTitle = header.querySelector('[data-drag-handle="true"]');
+  const existingButton = header.querySelector('.lightning-minimize-btn');
+  const existingWrapper = element.querySelector('.lightning-panel-content');
+
+  if (existingTitle) {
+    existingTitle.style.fontFamily = "'JetBrains Mono', monospace";
+    existingTitle.style.fontSize = '13px';
+    existingTitle.style.fontWeight = '700';
+  }
+
+  if (existingButton && existingWrapper) {
+    const isMinimized = localStorage.getItem(minimizeKey) === 'true';
+    existingWrapper.style.display = isMinimized ? 'none' : 'block';
+    existingButton.innerHTML = isMinimized ? '▶' : '▼';
+    return;
+  }
 
   // Wrap content
   const content = Array.from(element.children).slice(1);
@@ -83,31 +99,47 @@ function addMinimizeToggle(element, storageKey) {
   element.appendChild(contentWrapper);
 
   // Add minimize button
-  const minimizeBtn = document.createElement('span');
+  const minimizeBtn = document.createElement('button');
   minimizeBtn.className = 'lightning-minimize-btn';
   minimizeBtn.innerHTML = '▼';
   minimizeBtn.style.cssText = `
-    float: right;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    background: none;
+    border: none;
+    color: #888;
     cursor: pointer;
     user-select: none;
-    padding: 0 4px;
-    margin: -2px -4px 0 0;
+    padding: 2px 4px;
+    margin: 0;
     font-size: 10px;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    line-height: 1;
   `;
   minimizeBtn.title = 'Minimize/Maximize';
 
-  minimizeBtn.addEventListener('mouseenter', () => {
-    minimizeBtn.style.opacity = '1';
-  });
-  minimizeBtn.addEventListener('mouseleave', () => {
-    minimizeBtn.style.opacity = '0.7';
+  minimizeBtn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
   });
 
   header.style.display = 'flex';
   header.style.justifyContent = 'space-between';
   header.style.alignItems = 'center';
+  const title = document.createElement('span');
+  title.textContent = header.textContent.replace(/[▼▶]/g, '').trim();
+  title.dataset.dragHandle = 'true';
+  title.style.flex = '1';
+  title.style.cursor = 'grab';
+  title.style.userSelect = 'none';
+  title.style.fontFamily = "'JetBrains Mono', monospace";
+  title.style.fontSize = '13px';
+  title.style.fontWeight = '700';
+  title.style.color = '#00b4ff';
+  header.textContent = '';
+  header.appendChild(title);
   header.appendChild(minimizeBtn);
 
   // Load saved state
@@ -119,9 +151,7 @@ function addMinimizeToggle(element, storageKey) {
   }
 
   // Toggle function
-  const toggle = (e) => {
-    if (e && e.ctrlKey) return;
-
+  const toggle = () => {
     const isCurrentlyMinimized = contentWrapper.style.display === 'none';
 
     if (isCurrentlyMinimized) {
@@ -138,12 +168,6 @@ function addMinimizeToggle(element, storageKey) {
   };
 
   minimizeBtn.addEventListener('click', toggle);
-  header.addEventListener('click', (e) => {
-    if (e.target === minimizeBtn || e.target.parentElement === minimizeBtn) {
-      return;
-    }
-    toggle(e);
-  });
 }
 
 export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemoryMode = false }) {
@@ -542,7 +566,7 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
           min-width: 180px;
         `;
         div.innerHTML = `
-          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">⚡ Lightning Activity</div>
+          <div data-drag-handle="true" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; margin-bottom: 8px; cursor: grab; user-select: none; color: #00b4ff;">⚡️ Lightning Activity</div>
           <div style="opacity: 0.7; font-size: 10px;">Connecting...</div>
         `;
 
@@ -788,7 +812,7 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
           max-width: 280px;
         `;
         div.innerHTML = `
-          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">📍 Nearby Strikes (30km)</div>
+          <div data-drag-handle="true" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; margin-bottom: 8px; cursor: grab; user-select: none; color: #00b4ff;">📍 Nearby Strikes (30km)</div>
           <div style="opacity: 0.7; font-size: 10px;">No recent strikes</div>
         `;
 

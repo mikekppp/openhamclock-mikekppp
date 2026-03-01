@@ -1,7 +1,7 @@
 /**
  * makeDraggable — shared drag-to-reposition utility for map layer legends.
  *
- * Ctrl+drag to reposition; position saved to localStorage as viewport
+ * Drag the title handle to reposition; position saved to localStorage as viewport
  * percentages so it survives window resizes.  Clamped to keep at least
  * 40 px of the element visible so it can never be dragged off-screen.
  *
@@ -75,34 +75,33 @@ export function makeDraggable(el, storageKey, skipPositionLoad = false) {
     }
   }
 
-  el.title = 'Hold CTRL and drag to reposition · Double-click to reset';
+  const dragHandle =
+    el.querySelector('[data-drag-handle="true"]') ||
+    el.querySelector('.leaflet-control-drag-handle') ||
+    el.firstElementChild ||
+    el;
+
+  el.title = 'Drag the title to reposition · Double-click the title to reset';
+  if (dragHandle !== el) {
+    dragHandle.title = el.title;
+  }
 
   let isDragging = false;
   let startX, startY, startLeft, startTop;
+  let didDrag = false;
+  let suppressClick = false;
+  let previousTransition = '';
 
-  const updateCursor = (e) => {
-    el.style.cursor = e.ctrlKey ? 'grab' : 'default';
+  const updateCursor = () => {
+    dragHandle.style.cursor = isDragging ? 'grabbing' : 'grab';
   };
 
-  el.addEventListener('mouseenter', updateCursor, { signal });
-  el.addEventListener('mousemove', updateCursor, { signal });
-  document.addEventListener(
-    'keydown',
-    (e) => {
-      if (e.key === 'Control') updateCursor(e);
-    },
-    { signal },
-  );
-  document.addEventListener(
-    'keyup',
-    (e) => {
-      if (e.key === 'Control') updateCursor(e);
-    },
-    { signal },
-  );
+  dragHandle.style.touchAction = 'none';
+  dragHandle.style.userSelect = 'none';
+  updateCursor();
 
   // --- Double-click: reset to default position ---
-  el.addEventListener(
+  dragHandle.addEventListener(
     'dblclick',
     (e) => {
       e.preventDefault();
@@ -126,18 +125,31 @@ export function makeDraggable(el, storageKey, skipPositionLoad = false) {
     { signal },
   );
 
-  // --- Ctrl+mousedown: start drag ---
-  el.addEventListener(
+  dragHandle.addEventListener(
+    'click',
+    (e) => {
+      if (!suppressClick) return;
+      suppressClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    { capture: true, signal },
+  );
+
+  // --- Mousedown on drag handle: start drag ---
+  dragHandle.addEventListener(
     'mousedown',
     (e) => {
-      if (!e.ctrlKey) return;
-      if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') return;
+      if (e.button !== 0) return;
       isDragging = true;
+      didDrag = false;
       startX = e.clientX;
       startY = e.clientY;
       startLeft = el.offsetLeft;
       startTop = el.offsetTop;
-      el.style.cursor = 'grabbing';
+      previousTransition = el.style.transition;
+      el.style.transition = 'none';
+      dragHandle.style.cursor = 'grabbing';
       el.style.opacity = '0.8';
       e.preventDefault();
       e.stopPropagation();
@@ -150,6 +162,9 @@ export function makeDraggable(el, storageKey, skipPositionLoad = false) {
     'mousemove',
     (e) => {
       if (!isDragging) return;
+      if (!didDrag && (Math.abs(e.clientX - startX) > 2 || Math.abs(e.clientY - startY) > 2)) {
+        didDrag = true;
+      }
       el.style.left = startLeft + (e.clientX - startX) + 'px';
       el.style.top = startTop + (e.clientY - startY) + 'px';
     },
@@ -159,11 +174,13 @@ export function makeDraggable(el, storageKey, skipPositionLoad = false) {
   // --- Mouseup: stop drag, clamp, save ---
   document.addEventListener(
     'mouseup',
-    (e) => {
+    () => {
       if (!isDragging) return;
       isDragging = false;
       el.style.opacity = '1';
-      updateCursor(e);
+      el.style.transition = previousTransition;
+      updateCursor();
+      suppressClick = didDrag;
 
       // Clamp so element can't be lost off-screen
       clampToViewport(el);

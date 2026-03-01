@@ -174,12 +174,23 @@ function buildMUFCanvas(stations) {
 function addMinimizeToggle(container, storageKey) {
   const content = container.querySelector('.muf-panel-content');
   const btn = container.querySelector('.muf-minimize-btn');
+  const title = container.querySelector('div > div:first-child > span');
   if (!content || !btn) return;
-  const key = storageKey + '-minimized';
-  if (localStorage.getItem(key) === 'true') {
-    content.style.display = 'none';
-    btn.textContent = '▶';
+  if (title) {
+    title.dataset.dragHandle = 'true';
+    title.style.cursor = 'grab';
+    title.style.userSelect = 'none';
+    title.style.fontFamily = "'JetBrains Mono', monospace";
+    title.style.fontSize = '13px';
+    title.style.fontWeight = '700';
+    title.style.color = '#00b4ff';
   }
+  const key = storageKey + '-minimized';
+  const isMinimized = localStorage.getItem(key) === 'true';
+  content.style.display = isMinimized ? 'none' : 'block';
+  btn.textContent = isMinimized ? '▶' : '▼';
+  if (btn.dataset.toggleBound === 'true') return;
+  btn.dataset.toggleBound = 'true';
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     const hidden = content.style.display === 'none';
@@ -330,7 +341,7 @@ export function useLayer({ map, enabled, opacity }) {
             backdrop-filter: blur(8px);
           ">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-              <span style="color: #00b4ff; font-weight: 700; font-size: 12px;">📡 MUF Map</span>
+              <span data-drag-handle="true" style="color: #00b4ff; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; cursor: grab; user-select: none;">📡 MUF Map</span>
               <button class="muf-minimize-btn" style="
                 background: none; border: none; color: #888; font-size: 10px;
                 cursor: pointer; padding: 2px 4px;
@@ -375,8 +386,8 @@ export function useLayer({ map, enabled, opacity }) {
     setTimeout(() => {
       const container = controlRef.current?._container;
       if (!container) return;
-      makeDraggable(container, 'muf-map-position');
       addMinimizeToggle(container, 'muf-map-position');
+      makeDraggable(container, 'muf-map-position');
     }, 150);
   }, [enabled, map, stations, loading]);
 
