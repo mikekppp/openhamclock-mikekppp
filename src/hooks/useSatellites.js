@@ -78,7 +78,7 @@ export const useSatellites = (observerLocation) => {
           const elevation = satellite.radiansToDegrees(lookAngles.elevation);
           const rangeSat = lookAngles.rangeSat;
 
-          // Include all satellites we get TLE for (they're all ham sats)
+          // Include all satellites we get TLE for (curated list only)
           // Calculate orbit track (past 45 min and future 45 min = 90 min total)
           const track = [];
           const trackMinutes = 90;
