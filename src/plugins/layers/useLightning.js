@@ -448,7 +448,7 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
         const div = L.DomUtil.create('div', 'lightning-stats', panelWrapper);
         div.style.cssText = `
           background: var(--bg-panel);
-          border-radius: 8px;
+          border-radius: 5px;
           border: 1px solid var(--border-color);
           font-family: 'JetBrains Mono', monospace;
           font-size: 11px;
