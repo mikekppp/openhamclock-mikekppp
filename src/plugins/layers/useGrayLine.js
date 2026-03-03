@@ -297,6 +297,7 @@ export function useLayer({ enabled = false, opacity = 0.5, map = null }) {
           border: 1px solid var(--border-color);
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           min-width: 200px;
+          max-width: 280px;
         `;
 
         const now = new Date();

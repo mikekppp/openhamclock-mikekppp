@@ -409,7 +409,8 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
           color: var(--text-primary);
           border: 1px solid var(--border-color);
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          min-width: 180px;
+          min-width: 200px;
+          max-width: 280px;
         `;
 
         container.innerHTML = `
@@ -603,7 +604,8 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
           color: var(--text-primary);
           border: 1px solid var(--border-color);
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          min-width: 160px;
+          min-width: 200px;
+          max-width: 280px;
         `;
         div.innerHTML = `
           <div style="font-family: 'JetBrains Mono', monospace; font-weight: 700; margin: 0; padding: 10px; font-size: 13px; color: #00b4ff;">📊 WSPR Activity</div>
@@ -669,6 +671,8 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
           color: var(--text-primary);
           border: 1px solid var(--border-color);
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          min-width: 200px;
+          max-width: 280px;
         `;
         div.innerHTML = `
           <div style="font-family: 'JetBrains Mono', monospace; font-weight: 700; margin: 0; padding: 10px; font-size: 13px; color: #00b4ff;">📡 Signal Strength</div>
@@ -724,11 +728,12 @@ export function useLayer({ enabled = false, map = null, callsign, locator, lowMe
           background: var(--bg-panel);
           border-radius: 5px;
           font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
+          font-size: 11px;
           color: var(--text-primary);
           border: 1px solid var(--border-color);
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          min-width: 160px;
+          min-width: 200px;
+          max-width: 280px;
         `;
         div.innerHTML =
           '<div style="font-family: \'JetBrains Mono\', monospace; font-weight: 700; margin: 0; padding: 10px; font-size: 13px; color: #00b4ff;">📊 Band Activity</div><div style="opacity: 0.7;">Loading...</div>';

@@ -696,18 +696,17 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
         const div = L.DomUtil.create('div', 'lightning-proximity', panelWrapper);
         div.style.cssText = `
           background: var(--bg-panel);
-          border-radius: 8px;
-          border: 1px solid var(--border-color);
+          border-radius: 5px;
           font-family: 'JetBrains Mono', monospace;
           font-size: 11px;
           color: var(--text-primary);
+          border: 1px solid var(--border-color);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           min-width: 200px;
           max-width: 280px;
         `;
-        div.innerHTML = `
-          <div data-drag-handle="true" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; margin: 0; padding: 10px; cursor: grab; user-select: none; color: #00b4ff;">📍 Nearby Strikes (30km)</div>
-          <div style="opacity: 0.7; font-size: 10px;">No recent strikes</div>
-        `;
+        div.innerHTML =
+          '<div style="font-family: \'JetBrains Mono\', monospace; font-weight: 700; margin: 0; padding: 10px; font-size: 13px; color: #00b4ff;">📍 Nearby Strikes (30km)</div><div style="opacity: 0.7; font-size: 10px; text-align: center;">No recent strikes</div>';
 
         // Prevent map interaction
         L.DomEvent.disableClickPropagation(div);
@@ -734,6 +733,16 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
       if (container) {
         clearInterval(retryInterval);
         console.log('[Lightning] Proximity: Container found! Making draggable...');
+
+        // Default to CENTER of screen (not corner!)
+        container.style.position = 'fixed';
+        container.style.top = '45%'; // NOTE: using 45% instead of 50% with transform: translateX/Y due to dragging issues
+        container.style.left = '45%';
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+        container.style.zIndex = '1001'; // Ensure it's on top
+
+        console.log('[Lightning] Proximity: Panel positioned at center of screen');
 
         // Try to load saved position (but validate it's on-screen)
         const saved = localStorage.getItem('lightning-proximity-position');
@@ -847,8 +856,8 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
 
     if (nearbyStrikes.length === 0) {
       contentHTML = `
-        <div style="opacity: 0.7; font-size: 10px; text-align: center; padding: 10px 0;">
-          ✅ No strikes within 30km<br>
+        <div style="font-size: 10px; text-align: center;">
+          ✅ No strikes within 30km<br/>
           <span style="font-size: 9px; color: var(--text-muted);">All clear</span>
         </div>
       `;
