@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { getMoonPhase } from '../utils/geo.js';
+import useAutoRotate from '../hooks/app/useAutoRotate.js';
 
 const MODES = ['image', 'indices', 'xray', 'lunar'];
 const MODE_LABELS = { image: 'SOLAR', indices: 'SOLAR INDICES', xray: 'X-RAY FLUX', lunar: 'LUNAR' };
@@ -91,14 +92,19 @@ export const SolarPanel = ({ solarIndices, forcedMode }) => {
     return () => clearTimeout(retry);
   }, [imageError, mode]);
 
-  const cycleMode = () => {
-    const nextIdx = (MODES.indexOf(mode) + 1) % MODES.length;
-    const next = MODES[nextIdx];
-    setMode(next);
-    try {
-      localStorage.setItem('openhamclock_solarPanelMode', next);
-    } catch (e) {}
-  };
+  const cycleMode = useCallback(() => {
+    setMode((prev) => {
+      const nextIdx = (MODES.indexOf(prev) + 1) % MODES.length;
+      const next = MODES[nextIdx];
+      try {
+        localStorage.setItem('openhamclock_solarPanelMode', next);
+      } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  // Auto-rotate through views on a timer
+  const rotate = useAutoRotate('solarPanel', { onTick: cycleMode, itemCount: MODES.length });
 
   // Fetch X-ray data when xray mode is active
   const fetchXray = useCallback(async () => {
@@ -667,6 +673,48 @@ export const SolarPanel = ({ solarIndices, forcedMode }) => {
             >
               {MODE_ICONS[mode]}
             </button>
+          )}
+          {!forcedMode && (
+            <>
+              {rotate.enabled && (
+                <select
+                  value={rotate.interval}
+                  onChange={(e) => rotate.setInterval(e.target.value)}
+                  style={{
+                    fontSize: '9px',
+                    padding: '1px 2px',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--accent-amber)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '3px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    width: '42px',
+                  }}
+                >
+                  {rotate.INTERVAL_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}s
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={rotate.toggle}
+                title={rotate.enabled ? 'Stop auto-rotate' : 'Auto-rotate views'}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  padding: '0 2px',
+                  color: rotate.enabled ? 'var(--accent-amber)' : 'var(--text-muted)',
+                  lineHeight: 1,
+                }}
+              >
+                {rotate.enabled ? '⏸' : '▶'}
+              </button>
+            </>
           )}
         </div>
       </div>
