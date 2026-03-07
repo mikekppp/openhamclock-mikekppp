@@ -2890,19 +2890,17 @@ const DXSPIDER_NODES = [
 ];
 const DXSPIDER_SSID = '-56'; // OpenHamClock SSID
 
-function getDxClusterLoginCallsign(preferredCallsign = null, { skipSSID = false } = {}) {
+function getDxClusterLoginCallsign(preferredCallsign = null) {
   const candidate = (preferredCallsign || CONFIG.dxClusterCallsign || '').trim();
   if (candidate && candidate.toUpperCase() !== 'N0CALL') {
-    // Custom clusters: bare callsign only (no SSID)
-    // Built-in nodes: append SSID unless caller already included one
-    if (skipSSID || candidate.includes('-')) {
-      return candidate.toUpperCase();
+    // Append default SSID if caller didn't include one
+    if (!candidate.includes('-')) {
+      return `${candidate.toUpperCase()}${DXSPIDER_SSID}`;
     }
-    return `${candidate.toUpperCase()}${DXSPIDER_SSID}`;
+    return candidate.toUpperCase();
   }
 
   if (CONFIG.callsign && CONFIG.callsign.toUpperCase() !== 'N0CALL') {
-    if (skipSSID) return CONFIG.callsign.toUpperCase();
     return `${CONFIG.callsign.toUpperCase()}${DXSPIDER_SSID}`;
   }
 
@@ -3213,7 +3211,7 @@ function connectCustomSession(session) {
 }
 
 function getOrCreateCustomSession(node, userCallsign = null) {
-  const loginCallsign = getDxClusterLoginCallsign(userCallsign, { skipSSID: true });
+  const loginCallsign = getDxClusterLoginCallsign(userCallsign);
   const key = buildCustomSessionKey(node, loginCallsign);
   let session = customDxSessions.get(key);
 
@@ -3655,7 +3653,7 @@ app.get('/api/dxcluster/paths', async (req, res) => {
   // Generate cache key based on source profile so custom/proxy/auto don't mix.
   const cacheKey =
     source === 'custom'
-      ? `custom-${customHost}-${customPort}-${getDxClusterLoginCallsign(userCallsign, { skipSSID: true })}`
+      ? `custom-${customHost}-${customPort}-${getDxClusterLoginCallsign(userCallsign)}`
       : `source-${source}`;
   const pathsCache = getDxPathsCache(cacheKey);
 
@@ -3677,7 +3675,7 @@ app.get('/api/dxcluster/paths', async (req, res) => {
     // Handle custom telnet source (persistent connection, no reconnect-per-poll)
     if (source === 'custom' && customHost) {
       logDebug(
-        `[DX Paths] Using custom telnet session: ${customHost}:${customPort} as ${getDxClusterLoginCallsign(userCallsign, { skipSSID: true })}`,
+        `[DX Paths] Using custom telnet session: ${customHost}:${customPort} as ${getDxClusterLoginCallsign(userCallsign)}`,
       );
       const customNode = { host: customHost, port: customPort };
       const session = getOrCreateCustomSession(customNode, userCallsign);
