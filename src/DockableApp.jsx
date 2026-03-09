@@ -1231,16 +1231,6 @@ export const DockableApp = ({
         />
       </div>
 
-      {/* Dockable toolbar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          padding: '2px 16px 0',
-        }}
-      ></div>
-
       {/* Dockable Layout */}
       <div style={{ flex: 1, position: 'relative', padding: '8px', minHeight: 0 }}>
         <DockableLayoutProvider model={model}>

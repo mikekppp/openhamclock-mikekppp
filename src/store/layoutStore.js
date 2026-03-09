@@ -22,12 +22,14 @@ export const DEFAULT_LAYOUT = {
     {
       type: 'border',
       location: 'left',
+      id: 'left-border-tabset',
       children: [
         {
           type: 'tab',
           name: 'Lock Layout',
           component: 'lock-layout',
           id: 'lock-layout-tab',
+          enableClose: false,
         },
       ],
     },
@@ -127,7 +129,13 @@ export const loadLayout = () => {
     if (stored) {
       const parsed = JSON.parse(stored);
       // Validate basic structure
-      if (parsed.global && parsed.layout) {
+      if (parsed.global && parsed.layout && parsed.borders) {
+        // Use of the Left Border in the dockable layout has been added
+        // if the user does not have the defined border saved, add the default
+        if (parsed.borders.length === 0) {
+          parsed.borders = DEFAULT_LAYOUT.borders;
+          saveLayout(parsed);
+        }
         return parsed;
       }
     }
