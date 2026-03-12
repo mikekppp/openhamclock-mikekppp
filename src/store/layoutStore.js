@@ -26,9 +26,9 @@ export const DEFAULT_LAYOUT = {
       children: [
         {
           type: 'tab',
-          name: 'Lock Layout',
-          component: 'lock-layout',
-          id: 'lock-layout-tab',
+          name: 'Layout',
+          component: 'layout',
+          id: 'layout-tab',
           enableClose: false,
         },
       ],
@@ -119,7 +119,7 @@ export const PANEL_DEFINITIONS = {
   'world-map': { name: 'World Map', icon: '🗺️', description: 'Interactive world map' },
   'rig-control': { name: 'Rig Control', icon: '📻', description: 'Transceiver control and feedback' },
   'on-air': { name: 'On Air', icon: '🔴', description: 'Large TX status indicator' },
-  'lock-layout': { name: 'Lock the Layout', icon: '🔒', description: 'Lock the layout' },
+  layout: { name: 'Layout', icon: '📐', description: 'Layout controls' },
 };
 
 // Load layout from localStorage
@@ -135,6 +135,20 @@ export const loadLayout = () => {
         if (parsed.borders.length === 0) {
           parsed.borders = DEFAULT_LAYOUT.borders;
           saveLayout(parsed);
+        } else {
+          // Migrate lock-layout → layout rename
+          let migrated = false;
+          for (const border of parsed.borders) {
+            for (const child of border.children || []) {
+              if (child.component === 'lock-layout') {
+                child.component = 'layout';
+                child.id = 'layout-tab';
+                child.name = 'Layout';
+                migrated = true;
+              }
+            }
+          }
+          if (migrated) saveLayout(parsed);
         }
         return parsed;
       }
