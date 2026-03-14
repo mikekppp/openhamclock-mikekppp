@@ -410,6 +410,8 @@ HF propagation reliability predictions between your station (DE) and whatever DX
 
 **Hybrid correction:** When ionosonde data is available from `prop.kc2g.com`, the system applies real-time corrections based on actual measured ionospheric conditions rather than just modeled values. This can catch unusual propagation events that models miss.
 
+Data gathered from `prop.kc2g.com` originates from the [Global Ionospheric Radio Observatory](https://giro.uml.edu) who have graciously offered free access for that purpose. Thanks are given to all of the [ionosonde stations participating in that network](https://giro.uml.edu/didbase/acknowledgements.html).
+
 **Data refresh:** Predictions update every 10 minutes.
 
 ---
