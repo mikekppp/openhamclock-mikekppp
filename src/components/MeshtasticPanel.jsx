@@ -162,6 +162,8 @@ export default function MeshtasticPanel() {
   const [nodes, setNodes] = useState([]);
   const [messages, setMessages] = useState([]);
   const [sendText, setSendText] = useState('');
+  const [sendTo, setSendTo] = useState(null); // null = broadcast, or { num, name }
+  const [sendChannel, setSendChannel] = useState(0); // channel index 0-7
   const [sending, setSending] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const msgEndRef = useRef(null);
@@ -230,10 +232,15 @@ export default function MeshtasticPanel() {
     if (!sendText.trim() || sending) return;
     setSending(true);
     try {
+      const payload = {
+        text: sendText.trim(),
+        to: sendTo ? sendTo.num : 0xffffffff,
+        channel: sendChannel,
+      };
       const res = await fetch('/api/meshtastic/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: sendText.trim() }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setSendText('');
@@ -447,61 +454,192 @@ export default function MeshtasticPanel() {
                   No messages yet...
                 </div>
               )}
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-color)', fontSize: '11px' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                    <span style={{ color: 'var(--accent-amber)', fontWeight: 600 }}>{msg.fromName}</span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>{timeAgo(msg.timestamp)}</span>
-                  </div>
-                  <div style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>{msg.text}</div>
-                  {msg.channel > 0 && (
-                    <div style={{ fontSize: '9px', color: 'var(--accent-purple)', marginTop: '2px' }}>
-                      CH {msg.channel}
+              {messages.map((msg) => {
+                const isBroadcast = !msg.to || msg.to === 0xffffffff || msg.to === 4294967295;
+                return (
+                  <div
+                    key={msg.id}
+                    style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-color)', fontSize: '11px' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <span>
+                        <span
+                          style={{ color: 'var(--accent-amber)', fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => {
+                            if (msg.from) {
+                              const node = nodes.find((n) => n.num === msg.from);
+                              setSendTo({
+                                num: msg.from,
+                                name: msg.fromName || node?.longName || node?.shortName || `!${msg.from.toString(16)}`,
+                              });
+                            }
+                          }}
+                          title="Click to DM this node"
+                        >
+                          {msg.fromName}
+                        </span>
+                        {!isBroadcast && <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}> → DM</span>}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>{timeAgo(msg.timestamp)}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>{msg.text}</div>
+                    {msg.channel > 0 && (
+                      <div style={{ fontSize: '9px', color: 'var(--accent-purple)', marginTop: '2px' }}>
+                        CH {msg.channel}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               <div ref={msgEndRef} />
             </div>
 
             {isConnected && (
-              <div style={{ display: 'flex', gap: '4px', padding: '6px', borderTop: '1px solid var(--border-color)' }}>
-                <input
-                  type="text"
-                  value={sendText}
-                  onChange={(e) => setSendText(e.target.value.slice(0, 228))}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Type a message..."
-                  style={{
-                    flex: 1,
-                    padding: '6px 8px',
-                    background: 'var(--bg-tertiary)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '4px',
-                    color: 'var(--text-primary)',
-                    fontSize: '11px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!sendText.trim() || sending}
-                  style={{
-                    padding: '6px 10px',
-                    background: sendText.trim() ? 'var(--accent-amber)' : 'var(--bg-tertiary)',
-                    border: 'none',
-                    borderRadius: '4px',
-                    color: sendText.trim() ? '#000' : 'var(--text-muted)',
-                    fontSize: '11px',
-                    cursor: sendText.trim() ? 'pointer' : 'default',
-                    fontWeight: 600,
-                  }}
-                >
-                  {sending ? '...' : 'Send'}
-                </button>
+              <div
+                style={{
+                  borderTop: '1px solid var(--border-color)',
+                  padding: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                {/* To / Channel selectors */}
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', fontSize: '10px' }}>
+                  {/* Recipient picker */}
+                  <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>To:</span>
+                  <select
+                    value={sendTo ? String(sendTo.num) : 'broadcast'}
+                    onChange={(e) => {
+                      if (e.target.value === 'broadcast') {
+                        setSendTo(null);
+                      } else {
+                        const num = parseInt(e.target.value);
+                        const node = nodes.find((n) => n.num === num);
+                        setSendTo({
+                          num,
+                          name: node?.longName || node?.shortName || node?.id || `!${num.toString(16)}`,
+                        });
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '4px 6px',
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '3px',
+                      color: sendTo ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                      fontSize: '10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      minWidth: 0,
+                    }}
+                  >
+                    <option value="broadcast">📢 All Nodes (Broadcast)</option>
+                    {nodes
+                      .filter((n) => n.longName || n.shortName || n.id)
+                      .sort((a, b) => (a.longName || a.shortName || '').localeCompare(b.longName || b.shortName || ''))
+                      .map((n) => (
+                        <option key={n.num} value={String(n.num)}>
+                          💬 {n.longName || n.shortName || n.id}
+                        </option>
+                      ))}
+                  </select>
+
+                  {/* Channel picker */}
+                  <span style={{ color: 'var(--text-muted)', flexShrink: 0, marginLeft: '4px' }}>CH:</span>
+                  <select
+                    value={sendChannel}
+                    onChange={(e) => setSendChannel(parseInt(e.target.value))}
+                    style={{
+                      width: '50px',
+                      padding: '4px 4px',
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '3px',
+                      color: sendChannel > 0 ? 'var(--accent-purple)' : 'var(--text-primary)',
+                      fontSize: '10px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                    }}
+                  >
+                    {[0, 1, 2, 3, 4, 5, 6, 7].map((ch) => (
+                      <option key={ch} value={ch}>
+                        {ch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* DM indicator */}
+                {sendTo && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px' }}>
+                    <span style={{ color: 'var(--accent-cyan)' }}>DM → {sendTo.name}</span>
+                    <button
+                      onClick={() => setSendTo(null)}
+                      title="Switch to broadcast"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        padding: '0 2px',
+                        lineHeight: 1,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Message input + send */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <input
+                    type="text"
+                    value={sendText}
+                    onChange={(e) => setSendText(e.target.value.slice(0, 228))}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder={sendTo ? `Message to ${sendTo.name}...` : 'Broadcast message...'}
+                    style={{
+                      flex: 1,
+                      padding: '6px 8px',
+                      background: 'var(--bg-tertiary)',
+                      border: `1px solid ${sendTo ? 'var(--accent-cyan)' : 'var(--border-color)'}`,
+                      borderRadius: '4px',
+                      color: 'var(--text-primary)',
+                      fontSize: '11px',
+                      fontFamily: 'JetBrains Mono, monospace',
+                    }}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!sendText.trim() || sending}
+                    style={{
+                      padding: '6px 10px',
+                      background: sendText.trim() ? 'var(--accent-amber)' : 'var(--bg-tertiary)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: sendText.trim() ? '#000' : 'var(--text-muted)',
+                      fontSize: '11px',
+                      cursor: sendText.trim() ? 'pointer' : 'default',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {sending ? '...' : 'Send'}
+                  </button>
+                </div>
+
+                {/* Character count */}
+                {sendText.length > 0 && (
+                  <div
+                    style={{
+                      textAlign: 'right',
+                      fontSize: '9px',
+                      color: sendText.length > 200 ? 'var(--accent-red)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {sendText.length}/228
+                  </div>
+                )}
               </div>
             )}
           </div>
