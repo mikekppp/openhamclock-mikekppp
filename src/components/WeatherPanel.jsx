@@ -337,7 +337,7 @@ export const WeatherPanel = ({
                     }}
                   >
                     <div style={{ color: 'var(--text-muted)', fontWeight: '600', marginBottom: '2px' }}>
-                      {i === 0 ? t('weather.today') : day.date}
+                      {i === 0 ? t('weather.today') : t('weather.dayName.' + day.date)}
                     </div>
                     <div style={{ fontSize: '16px', lineHeight: 1.2 }}>{day.icon}</div>
                     <div style={{ fontFamily: 'JetBrains Mono, monospace', marginTop: '2px' }}>
