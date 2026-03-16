@@ -407,6 +407,16 @@ export const SettingsPanel = ({
     onClose();
   };
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const Code = ({ children }) => (
@@ -425,6 +435,7 @@ export const SettingsPanel = ({
   };
   return (
     <div
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -439,6 +450,7 @@ export const SettingsPanel = ({
       }}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--bg-secondary)',
           border: '2px solid var(--accent-amber)',

@@ -111,7 +111,7 @@ export const useWeatherAlerts = (location) => {
             severity: p.severity,
             urgency: p.urgency,
             description: p.description,
-            expires,
+            expires: p.expires || null,
             expiresMs,
             areaDesc: p.areaDesc,
             senderName: p.senderName,

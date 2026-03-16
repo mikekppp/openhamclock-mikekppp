@@ -40,6 +40,7 @@ export default function SidebarMenu({
   showUpdateButton,
   updateInProgress,
   breakpoint = 'desktop',
+  version,
   // Dockable layout props
   isDockable = false,
   layoutLocked = false,
@@ -193,6 +194,7 @@ export default function SidebarMenu({
           <button
             onClick={cycleMode}
             title={modeTitle}
+            tabIndex={isVisible ? 0 : -1}
             style={{
               background: 'none',
               border: 'none',
@@ -214,7 +216,8 @@ export default function SidebarMenu({
             <button
               key={item.id}
               onClick={() => onSettingsClick(item.id)}
-              title={!isExpanded ? item.label : undefined}
+              title={item.label}
+              tabIndex={isVisible ? 0 : -1}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -257,6 +260,7 @@ export default function SidebarMenu({
             <button
               onClick={onToggleLayoutLock}
               title={layoutLocked ? 'Unlock layout — allow drag, resize, close' : 'Lock layout — prevent changes'}
+              tabIndex={isVisible ? 0 : -1}
               style={{
                 ...actionBtnStyle(layoutLocked),
                 background: layoutLocked ? 'rgba(255, 170, 0, 0.15)' : 'var(--bg-tertiary)',
@@ -273,6 +277,7 @@ export default function SidebarMenu({
               onClick={onResetLayout}
               disabled={layoutLocked}
               title={layoutLocked ? 'Unlock layout to reset' : 'Reset panel layout to default'}
+              tabIndex={isVisible ? 0 : -1}
               style={{
                 ...actionBtnStyle(false),
                 opacity: layoutLocked ? 0.4 : 1,
@@ -312,6 +317,7 @@ export default function SidebarMenu({
               onClick={onUpdateClick}
               disabled={updateInProgress}
               title={updateInProgress ? 'Update in progress...' : 'Run update now'}
+              tabIndex={isVisible ? 0 : -1}
               style={{
                 ...actionBtnStyle(updateInProgress),
                 cursor: updateInProgress ? 'wait' : 'pointer',
@@ -326,6 +332,7 @@ export default function SidebarMenu({
           <button
             onClick={onFullscreenToggle}
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            tabIndex={isVisible ? 0 : -1}
             style={actionBtnStyle(isFullscreen)}
           >
             {isFullscreen ? <IconShrink size={14} /> : <IconExpand size={14} />}
@@ -333,13 +340,37 @@ export default function SidebarMenu({
           </button>
 
           {/* Donate */}
-          {!isFullscreen && <DonateButton compact={!isExpanded} fontSize="12px" padding="8px" />}
+          {!isFullscreen && (
+            <DonateButton compact={!isExpanded} fontSize="12px" padding="8px" tabIndex={isVisible ? 0 : -1} />
+          )}
 
           {/* Settings (quick access) */}
-          <button onClick={() => onSettingsClick()} title="Open Settings" style={actionBtnStyle(false)}>
+          <button
+            onClick={() => onSettingsClick()}
+            title="Open Settings"
+            tabIndex={isVisible ? 0 : -1}
+            style={actionBtnStyle(false)}
+          >
             <IconGear size={14} />
             {isExpanded && 'Settings'}
           </button>
+
+          {/* Version */}
+          {version && isExpanded && (
+            <div
+              onClick={() => window.dispatchEvent(new Event('openhamclock-show-whatsnew'))}
+              style={{
+                fontSize: '10px',
+                color: 'var(--text-muted)',
+                textAlign: 'center',
+                cursor: 'pointer',
+                padding: '4px 0 2px',
+              }}
+              title="What's new in this version"
+            >
+              v{version}
+            </div>
+          )}
         </div>
       </div>
     </>
