@@ -3395,6 +3395,9 @@ export const SettingsPanel = ({
                 </a>{' '}
                 user profiles (user-supplied coordinates, geocoded addresses, grid squares). Without this, locations
                 fall back to HamQTH (country-level only). Requires a QRZ Logbook Data subscription.
+                <br />
+                <strong>Note</strong> this is a server setting and is not related to clicking a callsign to go to
+                qrz.com. If you are not running a server, you will likely not have the permissions to change this.
               </div>
               {qrzStatus?.source === 'env' ? (
                 <div
