@@ -31,4 +31,20 @@ describe('dxClusterSpotMatcher', () => {
     expect(matchesDXSpotPath(spot, paths[1])).toBe(true);
     expect(findDXPathForSpot(paths, spot)).toEqual(paths[1]);
   });
+
+  it('does not throw when call-like fields are non-strings', () => {
+    const spot = {
+      call: 12345,
+      freq: 14074,
+      spotter: null,
+    };
+    const path = {
+      dxCall: 12345,
+      freq: '14074',
+      spotter: undefined,
+    };
+
+    expect(() => matchesDXSpotPath(spot, path)).not.toThrow();
+    expect(matchesDXSpotPath(spot, path)).toBe(true);
+  });
 });

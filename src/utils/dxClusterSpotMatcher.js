@@ -1,10 +1,17 @@
+const normalizeCall = (value) =>
+  String(value == null ? '' : value)
+    .trim()
+    .toUpperCase();
+
+const normalizeFreq = (value) => String(value == null ? '' : value).trim();
+
 export const buildDXSpotKey = (spot = {}) => {
   const id = typeof spot.id === 'string' ? spot.id.trim() : '';
   if (id) return id;
 
-  const dxCall = (spot.dxCall || spot.call || '').trim().toUpperCase();
-  const freq = String(spot.freq || '').trim();
-  const spotter = (spot.spotter || '').trim().toUpperCase();
+  const dxCall = normalizeCall(spot.dxCall || spot.call);
+  const freq = normalizeFreq(spot.freq);
+  const spotter = normalizeCall(spot.spotter);
 
   if (!dxCall) return '';
 
@@ -18,9 +25,9 @@ export const matchesDXSpotPath = (spot, path) => {
   if (spotKey && pathKey) return spotKey === pathKey;
 
   return (
-    (spot?.call || '').trim().toUpperCase() === (path?.dxCall || '').trim().toUpperCase() &&
-    String(spot?.freq || '').trim() === String(path?.freq || '').trim() &&
-    (spot?.spotter || '').trim().toUpperCase() === (path?.spotter || '').trim().toUpperCase()
+    normalizeCall(spot?.call) === normalizeCall(path?.dxCall) &&
+    normalizeFreq(spot?.freq) === normalizeFreq(path?.freq) &&
+    normalizeCall(spot?.spotter) === normalizeCall(path?.spotter)
   );
 };
 
