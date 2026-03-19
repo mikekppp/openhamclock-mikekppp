@@ -37,6 +37,7 @@ import { resetLayout, loadLayout, saveLayout } from './store/layoutStore.js';
 import { DockableLayoutProvider } from './contexts';
 import { useRig } from './contexts/RigContext.jsx';
 import { calculateBearing, calculateDistance, formatDistance } from './utils/geo.js';
+import { findDXPathForSpot } from './utils/dxClusterSpotMatcher';
 import { DXGridInput } from './components/DXGridInput.jsx';
 import { DXFavorites } from './components/DXFavorites.jsx';
 import DXCCSelect from './components/DXCCSelect.jsx';
@@ -344,7 +345,7 @@ export const DockableApp = ({
         handleDXChange({ lat: spot.lat, lon: spot.lon });
       } else if (spot.call) {
         // Try to find in DX Cluster paths
-        const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
+        const path = findDXPathForSpot(dxClusterData.paths || [], spot);
         if (path && path.dxLat != null && path.dxLon != null) {
           handleDXChange({ lat: path.dxLat, lon: path.dxLon });
         }

@@ -8,6 +8,7 @@ const dgram = require('dgram');
 const net = require('net');
 const dns = require('dns');
 const { gridToLatLon, getBandFromKHz } = require('../utils/grid');
+const { areDXPathsDuplicate } = require('../utils/dxClusterPathIdentity');
 
 module.exports = function (app, ctx) {
   const {
@@ -1597,10 +1598,7 @@ module.exports = function (app, ctx) {
       // Add new paths, avoiding duplicates (same dxCall+freq within 2 minutes)
       const mergedPaths = [...existingValidPaths];
       for (const newPath of newPaths) {
-        const isDuplicate = mergedPaths.some(
-          (existing) =>
-            existing.dxCall === newPath.dxCall && existing.freq === newPath.freq && now - existing.timestamp < 120000, // 2 minute dedup window
-        );
+        const isDuplicate = mergedPaths.some((existing) => areDXPathsDuplicate(existing, newPath, now));
         if (!isDuplicate) {
           mergedPaths.push(newPath);
         }

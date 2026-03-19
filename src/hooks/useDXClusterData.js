@@ -127,6 +127,7 @@ export const useDXClusterData = (filters = {}, config = {}) => {
 
     // Format for list display (matches old useDXCluster format)
     const spotList = filtered.slice(0, MAX_SPOTS).map((item) => ({
+      id: item.id,
       call: item.dxCall,
       freq: item.freq,
       comment: item.comment || '',
