@@ -1,12 +1,80 @@
 /**
- * Classic HamClock-style layout
+ * Classic HamClock-style layout — faithful WB0OEW HamClock recreation
  */
+import { useState, useEffect, useCallback } from 'react';
 import { DXNewsTicker, WorldMap } from '../components';
 import { DXGridInput } from '../components/DXGridInput.jsx';
 import { getBandColor, getBandColorForBand } from '../utils';
+import { calculateBearing, calculateDistance, formatDistance } from '../utils/geo.js';
 import CallsignLink from '../components/CallsignLink.jsx';
 import DonateButton from '../components/DonateButton.jsx';
 import { useRig } from '../contexts/RigContext.jsx';
+
+/**
+ * RotatingPane — cycles through views on a timer, click to advance
+ */
+function RotatingPane({ views, interval = 15000 }) {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (views.length <= 1) return;
+    const timer = setInterval(() => {
+      setIdx((i) => (i + 1) % views.length);
+    }, interval);
+    return () => clearInterval(timer);
+  }, [views.length, interval]);
+
+  const advance = useCallback(() => {
+    setIdx((i) => (i + 1) % views.length);
+  }, [views.length]);
+
+  const view = views[idx];
+  if (!view) return null;
+
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        cursor: 'pointer',
+      }}
+      onClick={advance}
+    >
+      {/* Header with label + dot indicators */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '3px 6px',
+          borderBottom: '1px solid #333',
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ fontSize: '10px', color: '#ffff00', fontWeight: '700', textTransform: 'uppercase' }}>
+          {view.label}
+        </span>
+        <div style={{ display: 'flex', gap: '3px' }}>
+          {views.map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: '5px',
+                height: '5px',
+                borderRadius: '50%',
+                background: i === idx ? '#ffff00' : '#444',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      {/* Content */}
+      <div style={{ flex: 1, overflow: 'hidden', padding: '4px 6px' }}>{view.render()}</div>
+    </div>
+  );
+}
 
 export default function ClassicLayout(props) {
   const {
@@ -55,368 +123,556 @@ export default function ClassicLayout(props) {
     wsjtxMapSpots,
     toggleDXLabels,
     toggleSatellites,
+    toggleDXPaths,
+    togglePOTA,
+    toggleSOTA,
+    toggleWWBOTA,
+    togglePSKReporter,
+    toggleWSJTX,
+    toggleDXNews,
+    toggleAPRS,
+    contests,
+    dxpeditions,
+    filteredPotaSpots,
+    filteredSotaSpots,
   } = props;
 
-  const liveSpotBands = ['160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '8m', '6m', '4m'];
   const mapLegendBands = ['160', '80', '40', '30', '20', '17', '15', '12', '10', '8', '6', '4'];
 
   const { tuneTo } = useRig();
 
+  // Seconds ticker for UTC clock
+  const [seconds, setSeconds] = useState(() => String(new Date().getUTCSeconds()).padStart(2, '0'));
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSeconds(String(new Date().getUTCSeconds()).padStart(2, '0'));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Handler for spot clicks — tune radio + move DX marker
+  const handleSpotClick = useCallback(
+    (spot) => {
+      tuneTo(spot);
+      const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
+      if (path && path.dxLat != null && path.dxLon != null) {
+        handleDXChange({ lat: path.dxLat, lon: path.dxLon });
+      }
+    },
+    [tuneTo, dxClusterData.paths, handleDXChange],
+  );
+
   // Handler for POTA/WWFF/SOTA spot clicks
   const handleParkSpotClick = (spot) => {
-    // tuneTo() in RigContext handles spot objects and all frequency conversions
     tuneTo(spot);
   };
+
+  // Kp color coding
+  const kpColor = (val) => {
+    const n = parseFloat(val);
+    if (isNaN(n)) return '#888';
+    if (n >= 6) return '#ff4444';
+    if (n >= 4) return '#ffff00';
+    return '#00ff00';
+  };
+
+  // Geomag field color
+  const geomagColor = (field) => {
+    if (!field) return '#888';
+    if (field === 'QUIET') return '#00ff00';
+    if (field === 'UNSETTLED') return '#ffff00';
+    return '#ff4444';
+  };
+
+  // Band condition colors
+  const condColor = (cond) => {
+    if (cond === 'GOOD') return '#00ff88';
+    if (cond === 'FAIR') return '#ffb432';
+    return '#ff4466';
+  };
+
+  // Format frequency for display
+  const fmtFreq = (freq) => {
+    const f = parseFloat(freq);
+    return f > 1000 ? (f / 1000).toFixed(3) : f.toFixed(3);
+  };
+
+  // Format sun times
+  const fmtSunTime = (date) => {
+    if (!date) return '--:--';
+    const d = date instanceof Date ? date : new Date(date);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // DE/DX bearing & distance
+  const deLat = config.location?.lat;
+  const deLon = config.location?.lon;
+  const dxLat = dxLocation?.lat;
+  const dxLon = dxLocation?.lon;
+  const bearing = deLat != null && dxLat != null ? Math.round(calculateBearing(deLat, deLon, dxLat, dxLon)) : null;
+  const distKm = deLat != null && dxLat != null ? calculateDistance(deLat, deLon, dxLat, dxLon) : null;
+  const distStr =
+    distKm != null ? formatDistance(distKm, config.allUnits === 'imperial' ? 'imperial' : 'metric') : '--';
+
+  // Map layer toggle button style
+  const layerBtnStyle = (active) => ({
+    background: active ? 'rgba(0,255,0,0.15)' : 'rgba(0,0,0,0.6)',
+    border: `1px solid ${active ? '#00ff00' : '#555'}`,
+    color: active ? '#00ff00' : '#666',
+    padding: '2px 5px',
+    fontSize: '9px',
+    cursor: 'pointer',
+    borderRadius: '2px',
+    fontFamily: 'JetBrains Mono, monospace',
+    fontWeight: '700',
+  });
+
+  // === Build rotating pane views ===
+
+  // Pane 1: DX Cluster, POTA, SOTA
+  const pane1Views = [
+    {
+      label: 'DX Cluster',
+      render: () => (
+        <div style={{ fontSize: '10px', overflow: 'auto', height: '100%' }}>
+          {dxClusterData.spots?.slice(0, 15).map((spot, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '58px 1fr 32px',
+                gap: '3px',
+                padding: '1px 0',
+                borderBottom: '1px solid #111',
+                cursor: 'pointer',
+                background: hoveredSpot?.call === spot.call ? '#222' : 'transparent',
+              }}
+              onMouseEnter={() => setHoveredSpot(spot)}
+              onMouseLeave={() => setHoveredSpot(null)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSpotClick(spot);
+              }}
+            >
+              <span style={{ color: '#ffff00' }}>{fmtFreq(spot.freq)}</span>
+              <span style={{ color: '#00ffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <CallsignLink call={spot.call} color="#00ffff" />
+              </span>
+              <span style={{ color: '#666', textAlign: 'right' }}>{spot.time || ''}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      label: 'POTA',
+      render: () => (
+        <div style={{ fontSize: '10px', overflow: 'auto', height: '100%' }}>
+          {(filteredPotaSpots || potaSpots?.data || []).slice(0, 15).map((spot, i) => (
+            <div
+              key={i}
+              style={{
+                padding: '1px 0',
+                borderBottom: '1px solid #111',
+                cursor: 'pointer',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleParkSpotClick(spot);
+              }}
+            >
+              <span style={{ color: '#00ff00' }}>
+                <CallsignLink call={spot.activator || spot.call} color="#00ff00" />
+              </span>
+              <span style={{ color: '#888', marginLeft: '4px' }}>{spot.reference || spot.park || ''}</span>
+              <span style={{ color: '#ffff00', marginLeft: '4px' }}>
+                {spot.frequency ? fmtFreq(spot.frequency) : ''}
+              </span>
+            </div>
+          ))}
+          {(filteredPotaSpots || potaSpots?.data || []).length === 0 && (
+            <div style={{ color: '#444', textAlign: 'center', marginTop: '8px' }}>No POTA activations</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      label: 'SOTA',
+      render: () => (
+        <div style={{ fontSize: '10px', overflow: 'auto', height: '100%' }}>
+          {(filteredSotaSpots || sotaSpots?.data || []).slice(0, 15).map((spot, i) => (
+            <div
+              key={i}
+              style={{
+                padding: '1px 0',
+                borderBottom: '1px solid #111',
+                cursor: 'pointer',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleParkSpotClick(spot);
+              }}
+            >
+              <span style={{ color: '#ff66ff' }}>
+                <CallsignLink call={spot.activator || spot.call} color="#ff66ff" />
+              </span>
+              <span style={{ color: '#888', marginLeft: '4px' }}>{spot.summit || spot.reference || ''}</span>
+              <span style={{ color: '#ffff00', marginLeft: '4px' }}>
+                {spot.frequency ? fmtFreq(spot.frequency) : ''}
+              </span>
+            </div>
+          ))}
+          {(filteredSotaSpots || sotaSpots?.data || []).length === 0 && (
+            <div style={{ color: '#444', textAlign: 'center', marginTop: '8px' }}>No SOTA activations</div>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Pane 2: SSN/SFI graphs, Propagation
+  const pane2Views = [
+    {
+      label: 'SSN / SFI',
+      render: () => (
+        <div style={{ display: 'flex', gap: '8px', height: '100%' }}>
+          {/* SSN */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '9px', color: '#888', textAlign: 'center' }}>SSN</div>
+            <div
+              style={{
+                height: '60px',
+                background: '#001100',
+                border: '1px solid #333',
+                borderRadius: '2px',
+                padding: '2px',
+              }}
+            >
+              {solarIndices?.data?.ssn?.history?.length > 0 && (
+                <svg width="100%" height="100%" viewBox="0 0 100 50" preserveAspectRatio="none">
+                  {(() => {
+                    const data = solarIndices.data.ssn.history.slice(-30);
+                    const values = data.map((d) => d.value);
+                    const max = Math.max(...values, 1);
+                    const min = Math.min(...values, 0);
+                    const range = max - min || 1;
+                    const points = data
+                      .map((d, i) => {
+                        const x = (i / (data.length - 1)) * 100;
+                        const y = 50 - ((d.value - min) / range) * 45;
+                        return `${x},${y}`;
+                      })
+                      .join(' ');
+                    return <polyline points={points} fill="none" stroke="#00ff00" strokeWidth="1.5" />;
+                  })()}
+                </svg>
+              )}
+            </div>
+            <div style={{ fontSize: '16px', color: '#00ffff', fontWeight: '700', textAlign: 'center' }}>
+              {solarIndices?.data?.ssn?.current ?? '--'}
+            </div>
+          </div>
+          {/* SFI */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '9px', color: '#888', textAlign: 'center' }}>SFI</div>
+            <div
+              style={{
+                height: '60px',
+                background: '#001100',
+                border: '1px solid #333',
+                borderRadius: '2px',
+                padding: '2px',
+              }}
+            >
+              {solarIndices?.data?.sfi?.history?.length > 0 && (
+                <svg width="100%" height="100%" viewBox="0 0 100 50" preserveAspectRatio="none">
+                  {(() => {
+                    const data = solarIndices.data.sfi.history.slice(-30);
+                    const values = data.map((d) => d.value);
+                    const max = Math.max(...values, 1);
+                    const min = Math.min(...values, 0);
+                    const range = max - min || 1;
+                    const points = data
+                      .map((d, i) => {
+                        const x = (i / (data.length - 1)) * 100;
+                        const y = 50 - ((d.value - min) / range) * 45;
+                        return `${x},${y}`;
+                      })
+                      .join(' ');
+                    return <polyline points={points} fill="none" stroke="#ff66ff" strokeWidth="1.5" />;
+                  })()}
+                </svg>
+              )}
+            </div>
+            <div style={{ fontSize: '16px', color: '#ff66ff', fontWeight: '700', textAlign: 'center' }}>
+              {solarIndices?.data?.sfi?.current ?? '--'}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      label: 'Propagation',
+      render: () => (
+        <div style={{ fontSize: '10px', height: '100%' }}>
+          {propagation?.data && (
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '6px' }}>
+              <span>
+                <span style={{ color: '#888' }}>MUF </span>
+                <span style={{ color: '#ff8800', fontWeight: '700', fontSize: '14px' }}>
+                  {propagation.data.muf || '?'} MHz
+                </span>
+              </span>
+              <span>
+                <span style={{ color: '#888' }}>LUF </span>
+                <span style={{ color: '#00aaff', fontWeight: '700', fontSize: '14px' }}>
+                  {propagation.data.luf || '?'} MHz
+                </span>
+              </span>
+            </div>
+          )}
+          {/* Band reliability bars */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px' }}>
+            {(bandConditions?.data || []).slice(0, 13).map((band, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <span style={{ color: '#888', width: '28px', textAlign: 'right' }}>{band.band}</span>
+                <div
+                  style={{
+                    flex: 1,
+                    height: '8px',
+                    background: '#111',
+                    borderRadius: '2px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      width: band.condition === 'GOOD' ? '100%' : band.condition === 'FAIR' ? '50%' : '15%',
+                      background: condColor(band.condition),
+                      borderRadius: '2px',
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  // Pane 3: Band Conditions, Contests, Space Wx Summary
+  const pane3Views = [
+    {
+      label: 'Band Conditions',
+      render: () => (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '3px',
+            fontSize: '10px',
+          }}
+        >
+          {(bandConditions?.data || []).slice(0, 13).map((band, i) => (
+            <div
+              key={i}
+              style={{
+                background: '#111',
+                border: `1px solid ${condColor(band.condition)}33`,
+                borderRadius: '2px',
+                padding: '3px 2px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ color: condColor(band.condition), fontWeight: '700', fontSize: '11px' }}>{band.band}</div>
+              <div style={{ color: condColor(band.condition), fontSize: '8px', opacity: 0.8 }}>{band.condition}</div>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      label: 'Contests',
+      render: () => (
+        <div style={{ fontSize: '10px', overflow: 'auto', height: '100%' }}>
+          {(contests?.data || []).slice(0, 8).map((contest, i) => (
+            <div key={i} style={{ padding: '2px 0', borderBottom: '1px solid #111' }}>
+              <div style={{ color: '#ffff00', fontWeight: '700' }}>{contest.name || contest.title}</div>
+              <div style={{ color: '#666' }}>
+                {contest.startDate || contest.start || ''} - {contest.endDate || contest.end || ''}
+              </div>
+            </div>
+          ))}
+          {(!contests?.data || contests.data.length === 0) && (
+            <div style={{ color: '#444', textAlign: 'center', marginTop: '8px' }}>No active contests</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      label: 'Space Wx',
+      render: () => (
+        <div style={{ fontSize: '11px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+            <div>
+              <span style={{ color: '#888' }}>Kp </span>
+              <span
+                style={{
+                  color: kpColor(solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex),
+                  fontWeight: '700',
+                }}
+              >
+                {solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex ?? '--'}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: '#888' }}>A </span>
+              <span style={{ color: '#00ffff', fontWeight: '700' }}>{bandConditions?.extras?.aIndex || '--'}</span>
+            </div>
+            <div>
+              <span style={{ color: '#888' }}>SFI </span>
+              <span style={{ color: '#ff66ff', fontWeight: '700' }}>
+                {solarIndices?.data?.sfi?.current || spaceWeather?.data?.solarFlux || '--'}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: '#888' }}>SSN </span>
+              <span style={{ color: '#00ffff', fontWeight: '700' }}>{solarIndices?.data?.ssn?.current ?? '--'}</span>
+            </div>
+            <div>
+              <span style={{ color: '#888' }}>Wind </span>
+              <span style={{ color: '#ffff00', fontWeight: '700' }}>
+                {bandConditions?.extras?.solarWind || '--'} km/s
+              </span>
+            </div>
+            <div>
+              <span style={{ color: '#888' }}>X-ray </span>
+              <span style={{ color: '#ffff00', fontWeight: '700' }}>{bandConditions?.extras?.xray || '--'}</span>
+            </div>
+          </div>
+          <div style={{ marginTop: '6px' }}>
+            <span style={{ color: '#888' }}>Geomag: </span>
+            <span style={{ color: geomagColor(bandConditions?.extras?.geomagField), fontWeight: '700' }}>
+              {bandConditions?.extras?.geomagField || '--'}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+  ];
 
   return config.layout === 'classic' ? (
     <div
       style={{
         width: '100vw',
         height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#000000',
+        display: 'grid',
+        gridTemplateRows: '1fr 160px 22px',
+        background: '#000',
         fontFamily: 'JetBrains Mono, monospace',
         overflow: 'hidden',
+        color: '#ccc',
       }}
     >
-      {/* TOP BAR - HamClock style */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '280px 1fr 300px',
-          height: '130px',
-          borderBottom: '2px solid #333',
-          background: '#000',
-        }}
-      >
-        {/* Callsign & Time */}
-        <div style={{ padding: '8px 12px', borderRight: '1px solid #333' }}>
-          <div
-            style={{
-              fontSize: '42px',
-              fontWeight: '900',
-              color: '#ff4444',
-              fontFamily: 'Orbitron, monospace',
-              cursor: 'pointer',
-              lineHeight: 1,
-            }}
-            onClick={() => setShowSettings(true)}
-            title={t('app.settings.click')}
-          >
-            {config.callsign}
-          </div>
-          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
-            {t('app.uptime', { uptime, version: 'v4.20' })}
-          </div>
-          <div style={{ marginTop: '8px' }}>
-            <div
-              style={{
-                fontSize: '36px',
-                fontWeight: '700',
-                color: '#00ff00',
-                fontFamily: 'JetBrains Mono, Consolas, monospace',
-                lineHeight: 1,
-                width: '180px',
-              }}
-            >
-              {utcTime}
-              <span style={{ fontSize: '20px', color: '#00cc00' }}>
-                :{String(new Date().getUTCSeconds()).padStart(2, '0')}
-              </span>
-            </div>
-            <div style={{ fontSize: '14px', color: '#00cc00', marginTop: '2px' }}>
-              {utcDate} <span style={{ color: '#666', marginLeft: '8px' }}>{t('app.time.utc')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Solar Indices - SSN & SFI */}
-        <div style={{ display: 'flex', borderRight: '1px solid #333' }}>
-          {/* SSN */}
-          <div style={{ flex: 1, padding: '8px', borderRight: '1px solid #333' }}>
-            <div style={{ fontSize: '10px', color: '#888', textAlign: 'center' }}>{t('app.solar.sunspotNumber')}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
-                style={{
-                  flex: 1,
-                  height: '70px',
-                  background: '#001100',
-                  border: '1px solid #333',
-                  borderRadius: '2px',
-                  padding: '4px',
-                }}
-              >
-                {solarIndices?.data?.ssn?.history?.length > 0 && (
-                  <svg width="100%" height="100%" viewBox="0 0 100 60" preserveAspectRatio="none">
-                    {(() => {
-                      const data = solarIndices.data.ssn.history.slice(-30);
-                      const values = data.map((d) => d.value);
-                      const max = Math.max(...values, 1);
-                      const min = Math.min(...values, 0);
-                      const range = max - min || 1;
-                      const points = data
-                        .map((d, i) => {
-                          const x = (i / (data.length - 1)) * 100;
-                          const y = 60 - ((d.value - min) / range) * 55;
-                          return `${x},${y}`;
-                        })
-                        .join(' ');
-                      return <polyline points={points} fill="none" stroke="#00ff00" strokeWidth="1.5" />;
-                    })()}
-                  </svg>
-                )}
-              </div>
-              <div
-                style={{
-                  fontSize: '48px',
-                  fontWeight: '700',
-                  color: '#00ffff',
-                  fontFamily: 'Orbitron, monospace',
-                }}
-              >
-                {solarIndices?.data?.ssn?.current ?? '--'}
-              </div>
-            </div>
-            <div
-              style={{
-                fontSize: '10px',
-                color: '#666',
-                textAlign: 'center',
-                marginTop: '2px',
-              }}
-            >
-              {t('app.solar.last30Days')}
-            </div>
-          </div>
-
-          {/* SFI */}
-          <div style={{ flex: 1, padding: '8px' }}>
-            <div style={{ fontSize: '10px', color: '#888', textAlign: 'center' }}>{t('app.solar.solarFlux')}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
-                style={{
-                  flex: 1,
-                  height: '70px',
-                  background: '#001100',
-                  border: '1px solid #333',
-                  borderRadius: '2px',
-                  padding: '4px',
-                }}
-              >
-                {solarIndices?.data?.sfi?.history?.length > 0 && (
-                  <svg width="100%" height="100%" viewBox="0 0 100 60" preserveAspectRatio="none">
-                    {(() => {
-                      const data = solarIndices.data.sfi.history.slice(-30);
-                      const values = data.map((d) => d.value);
-                      const max = Math.max(...values, 1);
-                      const min = Math.min(...values);
-                      const range = max - min || 1;
-                      const points = data
-                        .map((d, i) => {
-                          const x = (i / (data.length - 1)) * 100;
-                          const y = 60 - ((d.value - min) / range) * 55;
-                          return `${x},${y}`;
-                        })
-                        .join(' ');
-                      return <polyline points={points} fill="none" stroke="#00ff00" strokeWidth="1.5" />;
-                    })()}
-                  </svg>
-                )}
-              </div>
-              <div
-                style={{
-                  fontSize: '48px',
-                  fontWeight: '700',
-                  color: '#ff66ff',
-                  fontFamily: 'Orbitron, monospace',
-                }}
-              >
-                {solarIndices?.data?.sfi?.current || '--'}
-              </div>
-            </div>
-            <div
-              style={{
-                fontSize: '10px',
-                color: '#666',
-                textAlign: 'center',
-                marginTop: '2px',
-              }}
-            >
-              {t('app.solar.last30DaysPlus7')}
-            </div>
-          </div>
-        </div>
-
-        {/* Live Spots & Indices */}
-        <div style={{ display: 'flex' }}>
-          {/* Live Spots by Band */}
-          <div style={{ flex: 1, padding: '8px', borderRight: '1px solid #333' }}>
-            <div style={{ fontSize: '12px', color: '#ff6666', fontWeight: '700' }}>{t('app.liveSpots.title')}</div>
-            <div style={{ fontSize: '9px', color: '#888', marginBottom: '4px' }}>
-              {t('app.liveSpots.ofGridLastMinutes', {
-                grid: deGrid,
-                minutes: 15,
-              })}
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '2px',
-                fontSize: '10px',
-              }}
-            >
-              {liveSpotBands.map((band) => (
-                <div key={band} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: getBandColorForBand(band) }}>{band}</span>
-                  <span style={{ color: '#fff' }}>
-                    {dxClusterData.spots?.filter((s) => {
-                      const freq = parseFloat(s.freq);
-                      const bands = {
-                        '160m': [1.8, 2],
-                        '80m': [3.5, 4],
-                        '60m': [5.3, 5.4],
-                        '40m': [7, 7.3],
-                        '30m': [10.1, 10.15],
-                        '20m': [14, 14.35],
-                        '17m': [18.068, 18.168],
-                        '15m': [21, 21.45],
-                        '12m': [24.89, 24.99],
-                        '10m': [28, 29.7],
-                        '8m': [40, 42],
-                        '6m': [50, 54],
-                        '4m': [70, 70.5],
-                      };
-                      const r = bands[band];
-                      return r && freq >= r[0] && freq <= r[1];
-                    }).length || 0}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Space Weather Indices */}
-          <div style={{ width: '70px', padding: '8px', fontSize: '11px' }}>
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ color: '#888' }}>{t('app.spaceWeather.xray')}</div>
-              <div
-                style={{
-                  color: '#ffff00',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                }}
-              >
-                M3.0
-              </div>
-            </div>
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ color: '#888' }}>{t('app.spaceWeather.kp')}</div>
-              <div
-                style={{
-                  color: '#00ff00',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                }}
-              >
-                {solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex ?? '--'}
-              </div>
-            </div>
-            <div style={{ marginBottom: '6px' }}>
-              <div style={{ color: '#888' }}>{t('app.spaceWeather.bz')}</div>
-              <div
-                style={{
-                  color: '#00ffff',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                }}
-              >
-                -0
-              </div>
-            </div>
-            <div>
-              <div style={{ color: '#888' }}>{t('app.spaceWeather.aurora')}</div>
-              <div
-                style={{
-                  color: '#ff00ff',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                }}
-              >
-                18
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* MAIN AREA */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* DX Cluster List */}
+      {/* === TOP AREA: Left Column + Map + Right Column === */}
+      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr 60px', overflow: 'hidden' }}>
+        {/* LEFT COLUMN: Callsign+Clock on top, DE/DX below */}
         <div
           style={{
-            width: '220px',
-            borderRight: '1px solid #333',
             display: 'flex',
             flexDirection: 'column',
-            background: '#000',
+            borderRight: '1px solid #333',
+            overflow: 'hidden',
           }}
         >
-          <div
-            style={{
-              padding: '4px 8px',
-              borderBottom: '1px solid #333',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span style={{ color: '#ff6666', fontSize: '14px', fontWeight: '700' }}>
-              {t('app.dxCluster.shortTitle')}
-            </span>
-            <span style={{ color: '#00ff00', fontSize: '10px' }}>dxspider.co.uk:7300</span>
-          </div>
-          <div style={{ flex: 1, overflow: 'auto', fontSize: '11px' }}>
-            {dxClusterData.spots?.slice(0, 25).map((spot, i) => (
+          {/* Callsign + Clock Block */}
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid #333' }}>
+            <div
+              style={{
+                fontSize: '32px',
+                fontWeight: '900',
+                color: '#ff4444',
+                fontFamily: 'Orbitron, monospace',
+                cursor: 'pointer',
+                lineHeight: 1,
+              }}
+              onClick={() => setShowSettings(true)}
+              title={t('app.settings.click')}
+            >
+              {config.callsign}
+            </div>
+            <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>
+              {t('app.uptime', { uptime, version: 'v4.20' })}
+            </div>
+            <div style={{ marginTop: '6px' }}>
               <div
-                key={i}
                 style={{
-                  padding: '2px 6px',
-                  display: 'grid',
-                  gridTemplateColumns: '65px 1fr 35px',
-                  gap: '4px',
-                  borderBottom: '1px solid #111',
-                  cursor: 'pointer',
-                  background: hoveredSpot?.call === spot.call ? '#333' : 'transparent',
-                }}
-                onMouseEnter={() => setHoveredSpot(spot)}
-                onMouseLeave={() => setHoveredSpot(null)}
-                onClick={() => {
-                  tuneTo(spot);
-                  const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
-                  if (path && path.dxLat != null && path.dxLon != null) {
-                    handleDXChange({ lat: path.dxLat, lon: path.dxLon });
-                  }
+                  fontSize: '32px',
+                  fontWeight: '700',
+                  color: '#00ff00',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  lineHeight: 1,
                 }}
               >
-                <span style={{ color: '#ffff00' }}>
-                  {(() => {
-                    const f = parseFloat(spot.freq);
-                    return f > 1000 ? (f / 1000).toFixed(3) : f.toFixed(3);
-                  })()}
-                </span>
-                <span style={{ color: '#00ffff' }}>
-                  <CallsignLink call={spot.call} color="#00ffff" />
-                </span>
-                <span style={{ color: '#888' }}>{spot.time || '--'}</span>
+                {utcTime}
+                <span style={{ fontSize: '18px', color: '#00cc00' }}>:{seconds}</span>
               </div>
-            ))}
+              <div style={{ fontSize: '12px', color: '#00aa00', marginTop: '2px' }}>
+                {utcDate} <span style={{ color: '#555' }}>UTC</span>
+              </div>
+            </div>
+          </div>
+
+          {/* DE / DX Panels — side by side */}
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
+            {/* DE Panel */}
+            <div style={{ padding: '6px', borderRight: '1px solid #222', overflow: 'hidden' }}>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#00ff00', marginBottom: '4px' }}>DE:</div>
+              <div style={{ fontSize: '10px' }}>
+                <div style={{ color: '#00cccc' }}>{localTime}</div>
+                <div style={{ color: '#008888', fontSize: '9px' }}>{localDate}</div>
+                <div style={{ color: '#888', marginTop: '4px' }}>
+                  {deLat != null ? `${Math.abs(deLat).toFixed(1)}°${deLat >= 0 ? 'N' : 'S'}` : '--'}{' '}
+                  {deLon != null ? `${Math.abs(deLon).toFixed(1)}°${deLon >= 0 ? 'E' : 'W'}` : '--'}
+                </div>
+                <div style={{ color: '#00ffff', fontWeight: '700', marginTop: '2px' }}>{deGrid || '--'}</div>
+                <div style={{ marginTop: '4px', color: '#ffcc00', fontSize: '9px' }}>
+                  <div>&#9728;&#8593; {fmtSunTime(deSunTimes?.sunrise)}</div>
+                  <div>&#9728;&#8595; {fmtSunTime(deSunTimes?.sunset)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* DX Panel */}
+            <div style={{ padding: '6px', overflow: 'hidden' }}>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#00ff00', marginBottom: '4px' }}>DX:</div>
+              <div style={{ fontSize: '10px' }}>
+                <div style={{ color: '#00cccc' }}>
+                  {utcTime} <span style={{ color: '#555', fontSize: '8px' }}>UTC</span>
+                </div>
+                <div style={{ color: '#008888', fontSize: '9px' }}>{utcDate}</div>
+                <div style={{ color: '#888', marginTop: '4px' }}>
+                  {dxLat != null ? `${Math.abs(dxLat).toFixed(1)}°${dxLat >= 0 ? 'N' : 'S'}` : '--'}{' '}
+                  {dxLon != null ? `${Math.abs(dxLon).toFixed(1)}°${dxLon >= 0 ? 'E' : 'W'}` : '--'}
+                </div>
+                <div style={{ color: '#00ffff', fontWeight: '700', marginTop: '2px' }}>{dxGrid || '--'}</div>
+                <div style={{ marginTop: '4px', color: '#ffcc00', fontSize: '9px' }}>
+                  <div>&#9728;&#8593; {fmtSunTime(dxSunTimes?.sunrise)}</div>
+                  <div>&#9728;&#8595; {fmtSunTime(dxSunTimes?.sunset)}</div>
+                </div>
+                <div style={{ marginTop: '4px', color: '#ff8800', fontSize: '9px' }}>
+                  <div>{bearing != null ? `${bearing}°` : '--°'}</div>
+                  <div>{distStr}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Map */}
-        <div style={{ flex: 1, position: 'relative' }}>
+        {/* CENTER: World Map */}
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
           <WorldMap
             deLocation={config.location}
             dxLocation={dxLocation}
@@ -447,6 +703,7 @@ export default function ClassicLayout(props) {
             showDXNews={mapLayers.showDXNews}
             onToggleSatellites={toggleSatellites}
             hoveredSpot={hoveredSpot}
+            hideOverlays={true}
             callsign={config.callsign}
             lowMemoryMode={config.lowMemoryMode}
             allUnits={config.allUnits}
@@ -454,14 +711,14 @@ export default function ClassicLayout(props) {
             onSpotClick={tuneTo}
           />
 
-          {/* Map overlay buttons — bottom-left to avoid WorldMap's SAT/CALLS buttons at top */}
+          {/* Map overlay: Settings + DX Lock */}
           <div
             style={{
               position: 'absolute',
-              bottom: '54px',
-              left: '10px',
+              bottom: '30px',
+              left: '8px',
               display: 'flex',
-              gap: '6px',
+              gap: '4px',
               zIndex: 1000,
             }}
           >
@@ -471,15 +728,14 @@ export default function ClassicLayout(props) {
                 background: 'rgba(0,0,0,0.7)',
                 border: '1px solid #444',
                 color: '#fff',
-                padding: '6px 12px',
-                fontSize: '12px',
+                padding: '4px 8px',
+                fontSize: '10px',
                 cursor: 'pointer',
-                borderRadius: '4px',
+                borderRadius: '2px',
               }}
             >
               {t('app.settings')}
             </button>
-
             <button
               onClick={handleToggleDxLock}
               title={dxLocked ? t('app.dxLock.unlockTooltip') : t('app.dxLock.lockTooltip')}
@@ -487,40 +743,201 @@ export default function ClassicLayout(props) {
                 background: dxLocked ? 'rgba(255,180,0,0.9)' : 'rgba(0,0,0,0.7)',
                 border: '1px solid #444',
                 color: dxLocked ? '#000' : '#fff',
-                padding: '6px 12px',
-                fontSize: '12px',
+                padding: '4px 8px',
+                fontSize: '10px',
                 cursor: 'pointer',
-                borderRadius: '4px',
+                borderRadius: '2px',
               }}
             >
               {dxLocked ? t('app.dxLock.locked') : t('app.dxLock.unlocked')}
             </button>
           </div>
+
+          {/* Map layer toggles */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '4px',
+              right: '4px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '2px',
+              zIndex: 1000,
+              maxWidth: '200px',
+              justifyContent: 'flex-end',
+            }}
+          >
+            {toggleDXPaths && (
+              <button onClick={toggleDXPaths} style={layerBtnStyle(mapLayers.showDXPaths)}>
+                DX
+              </button>
+            )}
+            {togglePOTA && (
+              <button onClick={togglePOTA} style={layerBtnStyle(mapLayers.showPOTA)}>
+                POTA
+              </button>
+            )}
+            {toggleSOTA && (
+              <button onClick={toggleSOTA} style={layerBtnStyle(mapLayers.showSOTA)}>
+                SOTA
+              </button>
+            )}
+            {toggleWWBOTA && (
+              <button onClick={toggleWWBOTA} style={layerBtnStyle(mapLayers.showWWBOTA)}>
+                BOTA
+              </button>
+            )}
+            {toggleSatellites && (
+              <button onClick={toggleSatellites} style={layerBtnStyle(mapLayers.showSatellites)}>
+                SAT
+              </button>
+            )}
+            {togglePSKReporter && (
+              <button onClick={togglePSKReporter} style={layerBtnStyle(mapLayers.showPSKReporter)}>
+                PSK
+              </button>
+            )}
+            {toggleWSJTX && (
+              <button onClick={toggleWSJTX} style={layerBtnStyle(mapLayers.showWSJTX)}>
+                FT8
+              </button>
+            )}
+          </div>
+
+          {/* MUF color bar at bottom of map */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '4px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(0,0,0,0.8)',
+              border: '1px solid #333',
+              borderRadius: '2px',
+              padding: '2px 6px',
+              zIndex: 1000,
+              display: 'flex',
+              gap: '2px',
+              alignItems: 'center',
+              fontSize: '8px',
+              fontWeight: '700',
+            }}
+          >
+            {mapLegendBands.map((band) => (
+              <span
+                key={band}
+                style={{
+                  background: getBandColorForBand(`${band}m`),
+                  color: '#000',
+                  padding: '1px 2px',
+                  borderRadius: '1px',
+                  lineHeight: 1.2,
+                }}
+              >
+                {band}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Pane 4 — Space Weather Stats */}
+        <div
+          style={{
+            borderLeft: '1px solid #333',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-evenly',
+            padding: '4px',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Kp */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>Kp</div>
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: '700',
+                color: kpColor(solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex),
+              }}
+            >
+              {solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex ?? '--'}
+            </div>
+          </div>
+          {/* Bz */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>Bz</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#00ffff' }}>
+              {bandConditions?.extras?.bzComponent || bandConditions?.extras?.bz || '--'}
+            </div>
+          </div>
+          {/* X-ray */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>X-ray</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: '#ffff00' }}>
+              {bandConditions?.extras?.xray || '--'}
+            </div>
+          </div>
+          {/* SFI */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>SFI</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#ff66ff' }}>
+              {solarIndices?.data?.sfi?.current || spaceWeather?.data?.solarFlux || '--'}
+            </div>
+          </div>
+          {/* SSN */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>SSN</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#00ffff' }}>
+              {solarIndices?.data?.ssn?.current ?? '--'}
+            </div>
+          </div>
+          {/* Solar Wind */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>Wind</div>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#ffff00' }}>
+              {bandConditions?.extras?.solarWind || '--'}
+            </div>
+          </div>
+          {/* Geomag */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#666' }}>Geo</div>
+            <div
+              style={{
+                fontSize: '9px',
+                fontWeight: '700',
+                color: geomagColor(bandConditions?.extras?.geomagField),
+              }}
+            >
+              {bandConditions?.extras?.geomagField ? bandConditions.extras.geomagField.slice(0, 5) : '--'}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* BOTTOM - Frequency Scale */}
+      {/* === BOTTOM ROW: Three Rotating Panes === */}
       <div
         style={{
-          height: '24px',
-          background:
-            'linear-gradient(90deg, #ff0000 0%, #ff8800 15%, #ffff00 30%, #00ff00 45%, #00ffff 60%, #0088ff 75%, #8800ff 90%, #ff00ff 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          fontSize: '10px',
-          color: '#000',
-          fontWeight: '700',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          borderTop: '1px solid #333',
+          overflow: 'hidden',
         }}
       >
-        <span>{t('app.units.mhz')}</span>
-        <span>5</span>
-        <span>10</span>
-        <span>15</span>
-        <span>20</span>
-        <span>25</span>
-        <span>30</span>
-        <span>35</span>
+        <div style={{ borderRight: '1px solid #333', overflow: 'hidden' }}>
+          <RotatingPane views={pane1Views} />
+        </div>
+        <div style={{ borderRight: '1px solid #333', overflow: 'hidden' }}>
+          <RotatingPane views={pane2Views} />
+        </div>
+        <div style={{ overflow: 'hidden' }}>
+          <RotatingPane views={pane3Views} />
+        </div>
+      </div>
+
+      {/* === BOTTOM TICKER === */}
+      <div style={{ borderTop: '1px solid #333', overflow: 'hidden' }}>
+        <DXNewsTicker />
       </div>
     </div>
   ) : config.layout === 'tablet' ? (
