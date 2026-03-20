@@ -515,8 +515,8 @@ module.exports = function (app, ctx) {
           if (dxGrid) {
             const coords = gridToLatLon(dxGrid);
             if (coords) {
-              dxLat = coords.latitude;
-              dxLon = coords.longitude;
+              dxLat = coords.lat;
+              dxLon = coords.lon;
             }
           }
           // 2. Try grid cache (from prior CQ/exchange messages with grids)
