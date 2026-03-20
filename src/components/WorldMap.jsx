@@ -640,9 +640,13 @@ export const WorldMap = ({
     }, 60000);
 
     map.on('moveend', () => {
-      const center = map.getCenter();
-      const zoom = map.getZoom();
-      setMapView({ center: [center.lat, center.lng], zoom });
+      try {
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        setMapView({ center: [center.lat, center.lng], zoom });
+      } catch {
+        // Leaflet may throw if map panes are gone during resize/unmount
+      }
     });
 
     // Click handler:
@@ -1982,26 +1986,24 @@ export const WorldMap = ({
       />
 
       {/* Render plugin layers on active map (Mercator or Azimuthal) */}
-      {(() => {
-        const activeMap = isAzimuthal ? azimuthalMapRef.current : mapInstanceRef.current;
-        if (!activeMap) return null;
-        return getAllLayers().map((layerDef) => (
-          <PluginLayer
-            key={`${layerDef.id}-${isAzimuthal ? 'az' : 'merc'}`}
-            plugin={layerDef}
-            enabled={pluginLayerStates[layerDef.id]?.enabled ?? layerDef.defaultEnabled}
-            opacity={pluginLayerStates[layerDef.id]?.opacity ?? layerDef.defaultOpacity}
-            mapBandFilter={mapBandFilter}
-            config={pluginLayerStates[layerDef.id]?.config ?? layerDef.config}
-            map={activeMap}
-            satellites={satellites}
-            allUnits={allUnits}
-            callsign={callsign}
-            locator={deLocator}
-            lowMemoryMode={lowMemoryMode}
-          />
-        ));
-      })()}
+      {/* Always render all PluginLayer components to preserve React hook count.
+          Pass map={null} when no active map — hooks inside guard against it. */}
+      {getAllLayers().map((layerDef) => (
+        <PluginLayer
+          key={`${layerDef.id}-${isAzimuthal ? 'az' : 'merc'}`}
+          plugin={layerDef}
+          enabled={pluginLayerStates[layerDef.id]?.enabled ?? layerDef.defaultEnabled}
+          opacity={pluginLayerStates[layerDef.id]?.opacity ?? layerDef.defaultOpacity}
+          mapBandFilter={mapBandFilter}
+          config={pluginLayerStates[layerDef.id]?.config ?? layerDef.config}
+          map={isAzimuthal ? azimuthalMapRef.current : mapInstanceRef.current}
+          satellites={satellites}
+          allUnits={allUnits}
+          callsign={callsign}
+          locator={deLocator}
+          lowMemoryMode={lowMemoryMode}
+        />
+      ))}
 
       {/* Unified map control dock */}
       {!isAzimuthal && (

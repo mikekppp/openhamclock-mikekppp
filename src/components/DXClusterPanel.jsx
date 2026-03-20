@@ -74,7 +74,8 @@ export const DXClusterPanel = ({
     if (filters?.excludeContinents) count += filters.excludeContinents.length;
     if (filters?.excludeCqZones) count += filters.excludeCqZones.length;
     if (filters?.excludeItuZones) count += filters.excludeItuZones.length;
-    if (filters?.excludeCallList) count += filters.excludeCallList.length;
+    if (filters?.excludeDXCallList) count += filters.excludeDXCallList.length;
+    if (filters?.excludeDECallList) count += filters.excludeDECallList.length;
 
     return count;
   };
