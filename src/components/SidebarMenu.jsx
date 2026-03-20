@@ -59,17 +59,15 @@ export default function SidebarMenu({
   const hideTimeout = useRef(null);
   const isMobile = breakpoint === 'mobile';
 
-  // Don't render sidebar on mobile
-  if (isMobile) return null;
-
   // Persist mode
   useEffect(() => {
+    if (isMobile) return; // no-op on mobile but hook still runs
     try {
       localStorage.setItem('openhamclock_sidebarMode', mode);
     } catch {}
     // Notify App.jsx of width change
     window.dispatchEvent(new CustomEvent('sidebar-mode-change', { detail: { mode } }));
-  }, [mode]);
+  }, [mode, isMobile]);
 
   const isExpanded = mode === MODE_PINNED || hoverExpanded;
   const isVisible = mode !== MODE_HIDDEN || hoverExpanded;
@@ -103,6 +101,9 @@ export default function SidebarMenu({
     });
     setHoverExpanded(false);
   }, []);
+
+  // Don't render sidebar on mobile — placed after all hooks to keep hook count stable
+  if (isMobile) return null;
 
   const modeIcon = mode === MODE_HIDDEN ? '◀' : mode === MODE_ICONS ? '☰' : '📌';
   const modeTitle =
