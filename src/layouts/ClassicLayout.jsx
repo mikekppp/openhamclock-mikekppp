@@ -53,7 +53,7 @@ function RotatingPane({ views, interval = 15000 }) {
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: '12px', color: '#ffff00', fontWeight: '700', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: '14px', color: '#ffff00', fontWeight: '700', textTransform: 'uppercase' }}>
           {view.label}
         </span>
         <div style={{ display: 'flex', gap: '4px' }}>
@@ -197,12 +197,8 @@ export default function ClassicLayout(props) {
     return f > 1000 ? (f / 1000).toFixed(3) : f.toFixed(3);
   };
 
-  // Format sun times
-  const fmtSunTime = (date) => {
-    if (!date) return '--:--';
-    const d = date instanceof Date ? date : new Date(date);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
+  // Format sun times — calculateSunTimes returns pre-formatted "HH:MM" strings
+  const fmtSunTime = (val) => val || '--:--';
 
   // DE/DX bearing & distance
   const deLat = config.location?.lat;
@@ -234,13 +230,13 @@ export default function ClassicLayout(props) {
     {
       label: 'DX Cluster',
       render: () => (
-        <div style={{ fontSize: '13px', overflow: 'auto', height: '100%' }}>
-          {dxClusterData.spots?.slice(0, 12).map((spot, i) => (
+        <div style={{ fontSize: '15px', overflow: 'auto', height: '100%' }}>
+          {dxClusterData.spots?.slice(0, 10).map((spot, i) => (
             <div
               key={i}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '72px 1fr 40px',
+                gridTemplateColumns: '80px 1fr 44px',
                 gap: '4px',
                 padding: '2px 0',
                 borderBottom: '1px solid #111',
@@ -258,7 +254,7 @@ export default function ClassicLayout(props) {
               <span style={{ color: '#00ffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <CallsignLink call={spot.call} color="#00ffff" />
               </span>
-              <span style={{ color: '#666', textAlign: 'right' }}>{spot.time || ''}</span>
+              <span style={{ color: '#aaa', textAlign: 'right' }}>{spot.time || ''}</span>
             </div>
           ))}
         </div>
@@ -267,8 +263,8 @@ export default function ClassicLayout(props) {
     {
       label: 'POTA',
       render: () => (
-        <div style={{ fontSize: '13px', overflow: 'auto', height: '100%' }}>
-          {(filteredPotaSpots || potaSpots?.data || []).slice(0, 10).map((spot, i) => (
+        <div style={{ fontSize: '15px', overflow: 'auto', height: '100%' }}>
+          {(filteredPotaSpots || potaSpots?.data || []).slice(0, 8).map((spot, i) => (
             <div
               key={i}
               style={{
@@ -284,14 +280,14 @@ export default function ClassicLayout(props) {
               <span style={{ color: '#00ff00' }}>
                 <CallsignLink call={spot.activator || spot.call} color="#00ff00" />
               </span>
-              <span style={{ color: '#888', marginLeft: '4px' }}>{spot.reference || spot.park || ''}</span>
+              <span style={{ color: '#aaa', marginLeft: '4px' }}>{spot.reference || spot.park || ''}</span>
               <span style={{ color: '#ffff00', marginLeft: '4px' }}>
                 {spot.frequency ? fmtFreq(spot.frequency) : ''}
               </span>
             </div>
           ))}
           {(filteredPotaSpots || potaSpots?.data || []).length === 0 && (
-            <div style={{ color: '#444', textAlign: 'center', marginTop: '8px' }}>No POTA activations</div>
+            <div style={{ color: '#777', textAlign: 'center', marginTop: '8px' }}>No POTA activations</div>
           )}
         </div>
       ),
@@ -299,8 +295,8 @@ export default function ClassicLayout(props) {
     {
       label: 'SOTA',
       render: () => (
-        <div style={{ fontSize: '13px', overflow: 'auto', height: '100%' }}>
-          {(filteredSotaSpots || sotaSpots?.data || []).slice(0, 10).map((spot, i) => (
+        <div style={{ fontSize: '15px', overflow: 'auto', height: '100%' }}>
+          {(filteredSotaSpots || sotaSpots?.data || []).slice(0, 8).map((spot, i) => (
             <div
               key={i}
               style={{
@@ -316,14 +312,14 @@ export default function ClassicLayout(props) {
               <span style={{ color: '#ff66ff' }}>
                 <CallsignLink call={spot.activator || spot.call} color="#ff66ff" />
               </span>
-              <span style={{ color: '#888', marginLeft: '4px' }}>{spot.summit || spot.reference || ''}</span>
+              <span style={{ color: '#aaa', marginLeft: '4px' }}>{spot.summit || spot.reference || ''}</span>
               <span style={{ color: '#ffff00', marginLeft: '4px' }}>
                 {spot.frequency ? fmtFreq(spot.frequency) : ''}
               </span>
             </div>
           ))}
           {(filteredSotaSpots || sotaSpots?.data || []).length === 0 && (
-            <div style={{ color: '#444', textAlign: 'center', marginTop: '8px' }}>No SOTA activations</div>
+            <div style={{ color: '#777', textAlign: 'center', marginTop: '8px' }}>No SOTA activations</div>
           )}
         </div>
       ),
@@ -338,7 +334,7 @@ export default function ClassicLayout(props) {
         <div style={{ display: 'flex', gap: '8px', height: '100%' }}>
           {/* SSN */}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '12px', color: '#888', textAlign: 'center' }}>SSN</div>
+            <div style={{ fontSize: '14px', color: '#aaa', textAlign: 'center' }}>SSN</div>
             <div
               style={{
                 height: '60px',
@@ -368,13 +364,13 @@ export default function ClassicLayout(props) {
                 </svg>
               )}
             </div>
-            <div style={{ fontSize: '20px', color: '#00ffff', fontWeight: '700', textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', color: '#00ffff', fontWeight: '700', textAlign: 'center' }}>
               {solarIndices?.data?.ssn?.current ?? '--'}
             </div>
           </div>
           {/* SFI */}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '12px', color: '#888', textAlign: 'center' }}>SFI</div>
+            <div style={{ fontSize: '14px', color: '#aaa', textAlign: 'center' }}>SFI</div>
             <div
               style={{
                 height: '60px',
@@ -404,7 +400,7 @@ export default function ClassicLayout(props) {
                 </svg>
               )}
             </div>
-            <div style={{ fontSize: '20px', color: '#ff66ff', fontWeight: '700', textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', color: '#ff66ff', fontWeight: '700', textAlign: 'center' }}>
               {solarIndices?.data?.sfi?.current ?? '--'}
             </div>
           </div>
@@ -414,18 +410,18 @@ export default function ClassicLayout(props) {
     {
       label: 'Propagation',
       render: () => (
-        <div style={{ fontSize: '13px', height: '100%' }}>
+        <div style={{ fontSize: '15px', height: '100%' }}>
           {propagation?.data && (
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '6px' }}>
               <span>
-                <span style={{ color: '#888' }}>MUF </span>
-                <span style={{ color: '#ff8800', fontWeight: '700', fontSize: '16px' }}>
+                <span style={{ color: '#aaa' }}>MUF </span>
+                <span style={{ color: '#ff8800', fontWeight: '700', fontSize: '18px' }}>
                   {propagation.data.muf || '?'} MHz
                 </span>
               </span>
               <span>
-                <span style={{ color: '#888' }}>LUF </span>
-                <span style={{ color: '#00aaff', fontWeight: '700', fontSize: '16px' }}>
+                <span style={{ color: '#aaa' }}>LUF </span>
+                <span style={{ color: '#00aaff', fontWeight: '700', fontSize: '18px' }}>
                   {propagation.data.luf || '?'} MHz
                 </span>
               </span>
@@ -435,7 +431,7 @@ export default function ClassicLayout(props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px' }}>
             {(bandConditions?.data || []).slice(0, 13).map((band, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                <span style={{ color: '#888', width: '28px', textAlign: 'right' }}>{band.band}</span>
+                <span style={{ color: '#bbb', width: '32px', textAlign: 'right' }}>{band.band}</span>
                 <div
                   style={{
                     flex: 1,
@@ -472,7 +468,7 @@ export default function ClassicLayout(props) {
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
             gap: '3px',
-            fontSize: '12px',
+            fontSize: '14px',
           }}
         >
           {(bandConditions?.data || []).slice(0, 13).map((band, i) => (
@@ -486,8 +482,8 @@ export default function ClassicLayout(props) {
                 textAlign: 'center',
               }}
             >
-              <div style={{ color: condColor(band.condition), fontWeight: '700', fontSize: '13px' }}>{band.band}</div>
-              <div style={{ color: condColor(band.condition), fontSize: '10px', opacity: 0.8 }}>{band.condition}</div>
+              <div style={{ color: condColor(band.condition), fontWeight: '700', fontSize: '15px' }}>{band.band}</div>
+              <div style={{ color: condColor(band.condition), fontSize: '11px', opacity: 0.9 }}>{band.condition}</div>
             </div>
           ))}
         </div>
@@ -496,17 +492,17 @@ export default function ClassicLayout(props) {
     {
       label: 'Contests',
       render: () => (
-        <div style={{ fontSize: '13px', overflow: 'auto', height: '100%' }}>
-          {(contests?.data || []).slice(0, 8).map((contest, i) => (
+        <div style={{ fontSize: '15px', overflow: 'auto', height: '100%' }}>
+          {(contests?.data || []).slice(0, 6).map((contest, i) => (
             <div key={i} style={{ padding: '2px 0', borderBottom: '1px solid #111' }}>
               <div style={{ color: '#ffff00', fontWeight: '700' }}>{contest.name || contest.title}</div>
-              <div style={{ color: '#666' }}>
+              <div style={{ color: '#aaa' }}>
                 {contest.startDate || contest.start || ''} - {contest.endDate || contest.end || ''}
               </div>
             </div>
           ))}
           {(!contests?.data || contests.data.length === 0) && (
-            <div style={{ color: '#444', textAlign: 'center', marginTop: '8px' }}>No active contests</div>
+            <div style={{ color: '#777', textAlign: 'center', marginTop: '8px' }}>No active contests</div>
           )}
         </div>
       ),
@@ -514,10 +510,10 @@ export default function ClassicLayout(props) {
     {
       label: 'Space Wx',
       render: () => (
-        <div style={{ fontSize: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+        <div style={{ fontSize: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
             <div>
-              <span style={{ color: '#888' }}>Kp </span>
+              <span style={{ color: '#aaa' }}>Kp </span>
               <span
                 style={{
                   color: kpColor(solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex),
@@ -528,32 +524,32 @@ export default function ClassicLayout(props) {
               </span>
             </div>
             <div>
-              <span style={{ color: '#888' }}>A </span>
+              <span style={{ color: '#aaa' }}>A </span>
               <span style={{ color: '#00ffff', fontWeight: '700' }}>{bandConditions?.extras?.aIndex || '--'}</span>
             </div>
             <div>
-              <span style={{ color: '#888' }}>SFI </span>
+              <span style={{ color: '#aaa' }}>SFI </span>
               <span style={{ color: '#ff66ff', fontWeight: '700' }}>
                 {solarIndices?.data?.sfi?.current || spaceWeather?.data?.solarFlux || '--'}
               </span>
             </div>
             <div>
-              <span style={{ color: '#888' }}>SSN </span>
+              <span style={{ color: '#aaa' }}>SSN </span>
               <span style={{ color: '#00ffff', fontWeight: '700' }}>{solarIndices?.data?.ssn?.current ?? '--'}</span>
             </div>
             <div>
-              <span style={{ color: '#888' }}>Wind </span>
+              <span style={{ color: '#aaa' }}>Wind </span>
               <span style={{ color: '#ffff00', fontWeight: '700' }}>
                 {bandConditions?.extras?.solarWind || '--'} km/s
               </span>
             </div>
             <div>
-              <span style={{ color: '#888' }}>X-ray </span>
+              <span style={{ color: '#aaa' }}>X-ray </span>
               <span style={{ color: '#ffff00', fontWeight: '700' }}>{bandConditions?.extras?.xray || '--'}</span>
             </div>
           </div>
           <div style={{ marginTop: '6px' }}>
-            <span style={{ color: '#888' }}>Geomag: </span>
+            <span style={{ color: '#aaa' }}>Geomag: </span>
             <span style={{ color: geomagColor(bandConditions?.extras?.geomagField), fontWeight: '700' }}>
               {bandConditions?.extras?.geomagField || '--'}
             </span>
@@ -569,7 +565,7 @@ export default function ClassicLayout(props) {
         width: '100vw',
         height: '100vh',
         display: 'grid',
-        gridTemplateRows: '1fr 180px 26px',
+        gridTemplateRows: '1fr 210px 28px',
         background: '#000',
         fontFamily: 'JetBrains Mono, monospace',
         overflow: 'hidden',
@@ -577,7 +573,7 @@ export default function ClassicLayout(props) {
       }}
     >
       {/* === TOP AREA: Left Column + Map + Right Column === */}
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 80px', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '310px 1fr 90px', overflow: 'hidden' }}>
         {/* LEFT COLUMN: Callsign+Clock on top, DE/DX below */}
         <div
           style={{
@@ -588,10 +584,10 @@ export default function ClassicLayout(props) {
           }}
         >
           {/* Callsign + Clock Block */}
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #333' }}>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid #333' }}>
             <div
               style={{
-                fontSize: '36px',
+                fontSize: '42px',
                 fontWeight: '900',
                 color: '#ff4444',
                 fontFamily: 'Orbitron, monospace',
@@ -603,13 +599,13 @@ export default function ClassicLayout(props) {
             >
               {config.callsign}
             </div>
-            <div style={{ fontSize: '11px', color: '#555', marginTop: '3px' }}>
+            <div style={{ fontSize: '13px', color: '#999', marginTop: '4px' }}>
               {t('app.uptime', { uptime, version: 'v4.20' })}
             </div>
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ marginTop: '10px' }}>
               <div
                 style={{
-                  fontSize: '38px',
+                  fontSize: '44px',
                   fontWeight: '700',
                   color: '#00ff00',
                   fontFamily: 'JetBrains Mono, monospace',
@@ -617,10 +613,10 @@ export default function ClassicLayout(props) {
                 }}
               >
                 {utcTime}
-                <span style={{ fontSize: '22px', color: '#00cc00' }}>:{seconds}</span>
+                <span style={{ fontSize: '26px', color: '#00cc00' }}>:{seconds}</span>
               </div>
-              <div style={{ fontSize: '15px', color: '#00aa00', marginTop: '3px' }}>
-                {utcDate} <span style={{ color: '#555' }}>UTC</span>
+              <div style={{ fontSize: '18px', color: '#00aa00', marginTop: '4px' }}>
+                {utcDate} <span style={{ color: '#888' }}>UTC</span>
               </div>
             </div>
           </div>
@@ -628,47 +624,47 @@ export default function ClassicLayout(props) {
           {/* DE / DX Panels — stacked vertically */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
             {/* DE Panel */}
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid #333' }}>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#00ff00', marginBottom: '4px' }}>DE:</div>
-              <div style={{ fontSize: '14px' }}>
-                <div style={{ color: '#00cccc', fontSize: '16px', fontWeight: '600' }}>{localTime}</div>
-                <div style={{ color: '#008888', fontSize: '13px' }}>{localDate}</div>
-                <div style={{ color: '#888', marginTop: '4px', fontSize: '13px' }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid #333' }}>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#00ff00', marginBottom: '4px' }}>DE:</div>
+              <div style={{ fontSize: '16px' }}>
+                <div style={{ color: '#00cccc', fontSize: '20px', fontWeight: '600' }}>{localTime}</div>
+                <div style={{ color: '#00aaaa', fontSize: '16px' }}>{localDate}</div>
+                <div style={{ color: '#bbb', marginTop: '4px', fontSize: '15px' }}>
                   {deLat != null ? `${Math.abs(deLat).toFixed(1)}°${deLat >= 0 ? 'N' : 'S'}` : '--'}{' '}
                   {deLon != null ? `${Math.abs(deLon).toFixed(1)}°${deLon >= 0 ? 'E' : 'W'}` : '--'}
                 </div>
-                <div style={{ color: '#00ffff', fontWeight: '700', fontSize: '16px', marginTop: '2px' }}>
+                <div style={{ color: '#00ffff', fontWeight: '700', fontSize: '20px', marginTop: '2px' }}>
                   {deGrid || '--'}
                 </div>
-                <div style={{ marginTop: '4px', color: '#ffcc00', fontSize: '13px' }}>
+                <div style={{ marginTop: '4px', color: '#ffcc00', fontSize: '16px' }}>
                   <span>&#9728;&#8593; {fmtSunTime(deSunTimes?.sunrise)}</span>
-                  <span style={{ marginLeft: '10px' }}>&#9728;&#8595; {fmtSunTime(deSunTimes?.sunset)}</span>
+                  <span style={{ marginLeft: '12px' }}>&#9728;&#8595; {fmtSunTime(deSunTimes?.sunset)}</span>
                 </div>
               </div>
             </div>
 
             {/* DX Panel */}
-            <div style={{ padding: '8px 12px', flex: 1 }}>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#00ff00', marginBottom: '4px' }}>DX:</div>
-              <div style={{ fontSize: '14px' }}>
-                <div style={{ color: '#00cccc', fontSize: '16px', fontWeight: '600' }}>
-                  {utcTime} <span style={{ color: '#555', fontSize: '11px' }}>UTC</span>
+            <div style={{ padding: '10px 14px', flex: 1 }}>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#00ff00', marginBottom: '4px' }}>DX:</div>
+              <div style={{ fontSize: '16px' }}>
+                <div style={{ color: '#00cccc', fontSize: '20px', fontWeight: '600' }}>
+                  {utcTime} <span style={{ color: '#888', fontSize: '13px' }}>UTC</span>
                 </div>
-                <div style={{ color: '#008888', fontSize: '13px' }}>{utcDate}</div>
-                <div style={{ color: '#888', marginTop: '4px', fontSize: '13px' }}>
+                <div style={{ color: '#00aaaa', fontSize: '16px' }}>{utcDate}</div>
+                <div style={{ color: '#bbb', marginTop: '4px', fontSize: '15px' }}>
                   {dxLat != null ? `${Math.abs(dxLat).toFixed(1)}°${dxLat >= 0 ? 'N' : 'S'}` : '--'}{' '}
                   {dxLon != null ? `${Math.abs(dxLon).toFixed(1)}°${dxLon >= 0 ? 'E' : 'W'}` : '--'}
                 </div>
-                <div style={{ color: '#00ffff', fontWeight: '700', fontSize: '16px', marginTop: '2px' }}>
+                <div style={{ color: '#00ffff', fontWeight: '700', fontSize: '20px', marginTop: '2px' }}>
                   {dxGrid || '--'}
                 </div>
-                <div style={{ marginTop: '4px', color: '#ffcc00', fontSize: '13px' }}>
+                <div style={{ marginTop: '4px', color: '#ffcc00', fontSize: '16px' }}>
                   <span>&#9728;&#8593; {fmtSunTime(dxSunTimes?.sunrise)}</span>
-                  <span style={{ marginLeft: '10px' }}>&#9728;&#8595; {fmtSunTime(dxSunTimes?.sunset)}</span>
+                  <span style={{ marginLeft: '12px' }}>&#9728;&#8595; {fmtSunTime(dxSunTimes?.sunset)}</span>
                 </div>
-                <div style={{ marginTop: '6px', color: '#ff8800', fontSize: '14px', fontWeight: '600' }}>
+                <div style={{ marginTop: '6px', color: '#ff8800', fontSize: '18px', fontWeight: '600' }}>
                   <span>{bearing != null ? `${bearing}°` : '--°'}</span>
-                  <span style={{ marginLeft: '10px' }}>{distStr}</span>
+                  <span style={{ marginLeft: '12px' }}>{distStr}</span>
                 </div>
               </div>
             </div>
@@ -857,10 +853,10 @@ export default function ClassicLayout(props) {
         >
           {/* Kp */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>Kp</div>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>Kp</div>
             <div
               style={{
-                fontSize: '18px',
+                fontSize: '22px',
                 fontWeight: '700',
                 color: kpColor(solarIndices?.data?.kp?.current ?? spaceWeather?.data?.kIndex),
               }}
@@ -870,45 +866,45 @@ export default function ClassicLayout(props) {
           </div>
           {/* Bz */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>Bz</div>
-            <div style={{ fontSize: '16px', fontWeight: '700', color: '#00ffff' }}>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>Bz</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: '#00ffff' }}>
               {bandConditions?.extras?.bzComponent || bandConditions?.extras?.bz || '--'}
             </div>
           </div>
           {/* X-ray */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>X-ray</div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#ffff00' }}>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>X-ray</div>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: '#ffff00' }}>
               {bandConditions?.extras?.xray || '--'}
             </div>
           </div>
           {/* SFI */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>SFI</div>
-            <div style={{ fontSize: '18px', fontWeight: '700', color: '#ff66ff' }}>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>SFI</div>
+            <div style={{ fontSize: '22px', fontWeight: '700', color: '#ff66ff' }}>
               {solarIndices?.data?.sfi?.current || spaceWeather?.data?.solarFlux || '--'}
             </div>
           </div>
           {/* SSN */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>SSN</div>
-            <div style={{ fontSize: '18px', fontWeight: '700', color: '#00ffff' }}>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>SSN</div>
+            <div style={{ fontSize: '22px', fontWeight: '700', color: '#00ffff' }}>
               {solarIndices?.data?.ssn?.current ?? '--'}
             </div>
           </div>
           {/* Solar Wind */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>Wind</div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#ffff00' }}>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>Wind</div>
+            <div style={{ fontSize: '18px', fontWeight: '700', color: '#ffff00' }}>
               {bandConditions?.extras?.solarWind || '--'}
             </div>
           </div>
           {/* Geomag */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#888' }}>Geo</div>
+            <div style={{ fontSize: '13px', color: '#aaa' }}>Geo</div>
             <div
               style={{
-                fontSize: '12px',
+                fontSize: '14px',
                 fontWeight: '700',
                 color: geomagColor(bandConditions?.extras?.geomagField),
               }}
