@@ -490,7 +490,7 @@ export default function ModernLayout(props) {
           {mobileCard(deLocationPanel, 'de')}
 
           {/* DX Location */}
-          {mobileCard(dxLocationPanel, 'dx')}
+          {config.panels?.dxLocation?.visible !== false && mobileCard(dxLocationPanel, 'dx')}
 
           {/* DX Cluster — give it room to show spots */}
           {dxCluster && mobileCard(dxCluster, 'dxc', { minH: '280px' })}
@@ -561,7 +561,7 @@ export default function ModernLayout(props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {deLocationPanel}
-              {dxLocationPanel}
+              {config.panels?.dxLocation?.visible !== false && dxLocationPanel}
               {config.panels?.solar?.visible !== false && (
                 <SolarPanel solarIndices={solarIndices} bandConditions={bandConditions} />
               )}

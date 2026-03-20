@@ -2391,6 +2391,12 @@ export const SettingsPanel = ({
         {activeTab === 'layers' && (
           <div>
             {(() => {
+              const togglePanelVisible = (panelKey) => {
+                const panels = { ...config.panels };
+                panels[panelKey] = { ...panels[panelKey], visible: !(panels[panelKey]?.visible !== false) };
+                onSave({ ...config, panels });
+              };
+
               const overlayCards = [
                 {
                   id: 'de-dx-markers',
@@ -2399,6 +2405,14 @@ export const SettingsPanel = ({
                   icon: '📍',
                   title: 'DE/DX Markers',
                   description: 'Show or hide your DE and DX position markers on the map',
+                },
+                {
+                  id: 'dx-target-panel',
+                  checked: config.panels?.dxLocation?.visible !== false,
+                  onChange: () => togglePanelVisible('dxLocation'),
+                  icon: '🎯',
+                  title: 'DX Target Panel',
+                  description: 'Show or hide the DX target info panel (grid, bearing, sun times)',
                 },
                 {
                   id: 'dx-news-ticker',
