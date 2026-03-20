@@ -897,6 +897,9 @@ module.exports = function (app, ctx) {
       let usedSource = 'none';
 
       // Handle custom telnet source (persistent connection, no reconnect-per-poll)
+      if (source === 'custom' && !resolvedHost) {
+        logDebug('[DX Paths] Custom source selected but no host provided — check DX Cluster settings');
+      }
       if (source === 'custom' && resolvedHost) {
         logDebug(
           `[DX Paths] Using custom telnet session: ${resolvedHost}:${customPort} as ${getDxClusterLoginCallsign(userCallsign)}`,

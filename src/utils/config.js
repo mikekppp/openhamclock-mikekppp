@@ -59,6 +59,8 @@ export const DEFAULT_CONFIG = {
     dxCluster: 30000, // 30 seconds (was 5 sec)
     terminator: 60000, // 1 minute
   },
+  dxClusterSource: 'dxspider-proxy',
+  customDxCluster: { enabled: false, host: '', port: 7300 },
 };
 
 // Cache for server config
@@ -118,6 +120,7 @@ export const loadConfig = () => {
       showPota: serverConfig.showPota ?? config.showPota,
       showDxPaths: serverConfig.showDxPaths ?? config.showDxPaths,
       panels: { ...config.panels, ...serverConfig.panels },
+      dxClusterSource: serverConfig.dxClusterSource || config.dxClusterSource,
     };
   }
 
