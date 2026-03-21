@@ -1,7 +1,7 @@
 /**
  * Classic HamClock-style layout — faithful WB0OEW HamClock recreation
  */
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DXNewsTicker, WorldMap } from '../components';
 import { DXGridInput } from '../components/DXGridInput.jsx';
 import { DXFavorites } from '../components/DXFavorites.jsx';
@@ -557,6 +557,125 @@ export default function ClassicLayout(props) {
         </div>
       ),
     },
+    {
+      label: 'VOACAP',
+      render: () => {
+        const bands = ['80m', '40m', '30m', '20m', '17m', '15m', '12m', '10m'];
+        const currentHour = propagation?.currentHour ?? new Date().getUTCHours();
+        const currentBands = propagation?.currentBands || [];
+        const hourlyPredictions = propagation?.hourlyPredictions || {};
+        const getHeatColor = (rel) => {
+          if (rel >= 80) return '#00cc00';
+          if (rel >= 60) return '#55bb00';
+          if (rel >= 40) return '#ffcc00';
+          if (rel >= 20) return '#ff6600';
+          if (rel >= 10) return '#cc2200';
+          return '#221111';
+        };
+        return (
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {propagation?.muf && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'center',
+                  marginBottom: '4px',
+                  fontSize: '13px',
+                }}
+              >
+                <span>
+                  <span style={{ color: '#aaa' }}>MUF </span>
+                  <span style={{ color: '#ff8800', fontWeight: '700' }}>{propagation.muf} MHz</span>
+                </span>
+                <span>
+                  <span style={{ color: '#aaa' }}>LUF </span>
+                  <span style={{ color: '#00aaff', fontWeight: '700' }}>{propagation.luf || '?'} MHz</span>
+                </span>
+              </div>
+            )}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '28px repeat(24, 1fr)',
+                gridTemplateRows: `repeat(${bands.length}, 1fr)`,
+                gap: '1px',
+                fontSize: '11px',
+                fontFamily: 'JetBrains Mono, monospace',
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
+              {bands.map((band) => (
+                <React.Fragment key={band}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      paddingRight: '3px',
+                      color: '#aaa',
+                      fontSize: '10px',
+                    }}
+                  >
+                    {band.replace('m', '')}
+                  </div>
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const hour = (currentHour - 12 + i + 24) % 24;
+                    let rel = 0;
+                    if (hour === currentHour && currentBands?.length > 0) {
+                      const cbd = currentBands.find((b) => b.band === band);
+                      if (cbd) rel = cbd.reliability || 0;
+                    } else {
+                      const hd = hourlyPredictions[band]?.find((h) => h.hour === hour);
+                      rel = hd?.reliability || 0;
+                    }
+                    return (
+                      <div
+                        key={hour}
+                        style={{
+                          background: getHeatColor(rel),
+                          borderRadius: '1px',
+                          border: hour === currentHour ? '1px solid #fff' : 'none',
+                        }}
+                        title={`${band} @ ${hour}:00 UTC: ${rel}%`}
+                      />
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+            {/* Hour labels */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '28px repeat(24, 1fr)',
+                marginTop: '2px',
+                fontSize: '9px',
+                color: '#888',
+              }}
+            >
+              <div>UTC</div>
+              {Array.from({ length: 24 }, (_, i) => {
+                const hour = (currentHour - 12 + i + 24) % 24;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      textAlign: 'center',
+                      fontWeight: hour === currentHour ? '700' : 'normal',
+                      color: hour === currentHour ? '#fff' : undefined,
+                    }}
+                  >
+                    {hour % 3 === 0 ? hour : ''}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      },
+    },
   ];
 
   // Pane 3: Band Conditions, Contests, Space Wx Summary
@@ -859,7 +978,7 @@ export default function ClassicLayout(props) {
           <div
             style={{
               position: 'absolute',
-              top: '4px',
+              bottom: '28px',
               right: '4px',
               display: 'flex',
               flexWrap: 'wrap',
@@ -915,13 +1034,14 @@ export default function ClassicLayout(props) {
               transform: 'translateX(-50%)',
               background: 'rgba(0,0,0,0.8)',
               border: '1px solid #333',
-              borderRadius: '2px',
-              padding: '2px 6px',
+              borderRadius: '3px',
+              padding: '3px 8px',
               zIndex: 1000,
               display: 'flex',
-              gap: '2px',
+              gap: '3px',
               alignItems: 'center',
-              fontSize: '8px',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
               fontWeight: '700',
             }}
           >
@@ -931,8 +1051,8 @@ export default function ClassicLayout(props) {
                 style={{
                   background: getBandColorForBand(`${band}m`),
                   color: '#000',
-                  padding: '1px 2px',
-                  borderRadius: '1px',
+                  padding: '1px 4px',
+                  borderRadius: '2px',
                   lineHeight: 1.2,
                 }}
               >
@@ -1357,12 +1477,12 @@ export default function ClassicLayout(props) {
               background: 'rgba(0,0,0,0.8)',
               border: '1px solid #444',
               borderRadius: '4px',
-              padding: '3px 6px',
+              padding: '3px 8px',
               zIndex: 1000,
               display: 'flex',
               gap: '3px',
               alignItems: 'center',
-              fontSize: '9px',
+              fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace',
               fontWeight: '700',
             }}
@@ -1373,7 +1493,7 @@ export default function ClassicLayout(props) {
                 style={{
                   background: getBandColorForBand(`${band}m`),
                   color: '#000',
-                  padding: '1px 3px',
+                  padding: '1px 4px',
                   borderRadius: '2px',
                   lineHeight: 1.2,
                 }}
@@ -2028,12 +2148,12 @@ export default function ClassicLayout(props) {
               background: 'rgba(0,0,0,0.8)',
               border: '1px solid #444',
               borderRadius: '4px',
-              padding: '3px 6px',
+              padding: '3px 8px',
               zIndex: 1000,
               display: 'flex',
               gap: '3px',
               alignItems: 'center',
-              fontSize: '9px',
+              fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace',
               fontWeight: '700',
             }}
@@ -2044,7 +2164,7 @@ export default function ClassicLayout(props) {
                 style={{
                   background: getBandColorForBand(`${band}m`),
                   color: '#000',
-                  padding: '1px 3px',
+                  padding: '1px 4px',
                   borderRadius: '2px',
                   lineHeight: 1.2,
                 }}
