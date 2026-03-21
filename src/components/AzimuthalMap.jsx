@@ -13,6 +13,7 @@ import { calculateGridSquare } from '../utils/geo.js';
 import { MAP_STYLES } from '../utils/config.js';
 import { createTileReprojector } from '../utils/tileReproject.js';
 import { createAzimuthalCRS } from '../utils/azimuthalCRS.js';
+import { matchesDXSpotPath } from '../utils/dxClusterSpotMatcher';
 
 // ── Projection Math ────────────────────────────────────────
 const DEG = Math.PI / 180;
@@ -527,11 +528,13 @@ export default function AzimuthalMap({
 
         const freq = parseFloat(path.freq);
         const color = getBandColor(freq);
-        const isHovered = hoveredSpot?.call?.toUpperCase() === path.dxCall?.toUpperCase();
+        const isHovered = matchesDXSpotPath(hoveredSpot, path);
 
         const p = toCanvas(path.dxLat, path.dxLon);
 
-        if (path.spotterLat && path.spotterLon) {
+        // Only draw spotter circle and lines if spotter coordinates are valid (not null/undefined).
+        // Using != null instead of truthy check (&&) ensures coordinates at 0,0 are handled correctly.
+        if (path.spotterLat != null && path.spotterLon != null) {
           const s = toCanvas(path.spotterLat, path.spotterLon);
           ctx.beginPath();
           ctx.moveTo(s.x, s.y);

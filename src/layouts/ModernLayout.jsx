@@ -26,6 +26,7 @@ import {
 } from '../components';
 import { useRig } from '../contexts/RigContext.jsx';
 import { calculateDistance, formatDistance } from '../utils/geo.js';
+import { findDXPathForSpot } from '../utils/dxClusterSpotMatcher';
 import { DXGridInput } from '../components/DXGridInput.jsx';
 import { DXFavorites } from '../components/DXFavorites.jsx';
 import DXCCSelect from '../components/DXCCSelect.jsx';
@@ -130,7 +131,7 @@ export default function ModernLayout(props) {
   const handleParkSpotClick = (spot) => tuneTo(spot);
   const handleDXSpotClick = (spot) => {
     tuneTo(spot);
-    const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
+    const path = findDXPathForSpot(dxClusterData.paths || [], spot);
     if (path && path.dxLat != null && path.dxLon != null) {
       handleDXChange({ lat: path.dxLat, lon: path.dxLon });
     }
