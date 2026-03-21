@@ -170,6 +170,7 @@ export default function ModernLayout(props) {
         showSatellites={mapLayers.showSatellites}
         showPSKReporter={mapLayers.showPSKReporter}
         showPSKPaths={mapLayers.showPSKPaths}
+        showMutualReception={config.showMutualReception !== false}
         wsjtxSpots={wsjtxMapSpots}
         showWSJTX={mapLayers.showWSJTX}
         showDXNews={mapLayers.showDXNews}
@@ -349,6 +350,7 @@ export default function ModernLayout(props) {
   const pskPanel = config.panels?.pskReporter?.visible !== false && (
     <PSKReporterPanel
       callsign={config.callsign}
+      showMutualReception={config.showMutualReception !== false}
       pskReporter={pskReporter}
       showOnMap={mapLayers.showPSKReporter}
       onToggleMap={togglePSKReporter}

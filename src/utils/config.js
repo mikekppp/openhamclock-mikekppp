@@ -35,6 +35,7 @@ export const DEFAULT_CONFIG = {
   timezone: '', // IANA timezone (e.g. 'America/Regina') — empty = browser default
   use12Hour: true,
   swapHeaderClocks: false, // false = UTC first, true = Local first
+  showMutualReception: true, // Show gold star on PSK spots with mutual reception
   preventSleep: false, // Keep screen awake while app is open (tablet/kiosk mode)
   showSatellites: true,
   showPota: true,

@@ -667,6 +667,7 @@ export const DockableApp = ({
         onToggleSatellites={toggleSatellitesEff}
         showPSKReporter={mapLayersEff.showPSKReporter}
         showPSKPaths={mapLayersEff.showPSKPaths}
+        showMutualReception={config.showMutualReception !== false}
         showWSJTX={mapLayersEff.showWSJTX}
         showDXNews={mapLayersEff.showDXNews}
         showAPRS={mapLayersEff.showAPRS}
@@ -810,6 +811,7 @@ export const DockableApp = ({
           content = (
             <PSKReporterPanel
               callsign={config.callsign}
+              showMutualReception={config.showMutualReception !== false}
               pskReporter={pskReporter}
               showOnMap={mapLayersEff.showPSKReporter}
               onToggleMap={togglePSKReporterEff}

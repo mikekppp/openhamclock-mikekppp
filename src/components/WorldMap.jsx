@@ -100,6 +100,7 @@ export const WorldMap = ({
   showWWBOTALabels = true,
   showPSKReporter,
   showPSKPaths = true,
+  showMutualReception = true,
   showWSJTX,
   showAPRS,
   aprsStations,
@@ -1632,6 +1633,22 @@ export const WorldMap = ({
     }
   }, [pluginLayerStates, integrationsRev]);
 
+  // Mutual reception lookup: callsigns that appear in BOTH TX and RX reports (same band)
+  const pskMutualCalls = useMemo(() => {
+    if (!showMutualReception || !pskReporterSpots || pskReporterSpots.length === 0) return new Set();
+    const txCalls = new Set();
+    const rxCalls = new Set();
+    for (const spot of pskReporterSpots) {
+      if (spot.direction === 'tx') txCalls.add(`${spot.receiver?.toUpperCase()}|${spot.band}`);
+      else if (spot.direction === 'rx') rxCalls.add(`${spot.sender?.toUpperCase()}|${spot.band}`);
+    }
+    const mutual = new Set();
+    for (const key of txCalls) {
+      if (rxCalls.has(key)) mutual.add(key);
+    }
+    return mutual;
+  }, [pskReporterSpots]);
+
   // Update PSKReporter markers
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -1666,6 +1683,7 @@ export const WorldMap = ({
 
           const freqMHz = Number.isFinite(parseFloat(freqMHzRaw)) ? parseFloat(freqMHzRaw).toFixed(3) : '?';
           const bandColor = getBandColor(parseFloat(freqMHzRaw));
+          const mutual = pskMutualCalls.has(`${displayCall?.toUpperCase()}|${spot.band}`);
 
           try {
             // Draw line from DE to spot location (only if paths enabled)
@@ -1692,6 +1710,7 @@ export const WorldMap = ({
             }
 
             // TX = circle marker, RX = diamond marker (colorblind-friendly shape distinction)
+            // Mutual reception spots get a gold border ring
             replicatePoint(spotLat, spotLon).forEach(([rLat, rLon]) => {
               let marker;
               if (isRx) {
@@ -1700,23 +1719,23 @@ export const WorldMap = ({
                   icon: L.divIcon({
                     className: '',
                     html: `<div style="
-                      width: 8px; height: 8px;
+                      width: ${mutual ? '10px' : '8px'}; height: ${mutual ? '10px' : '8px'};
                       background: ${bandColor};
-                      border: 1px solid #fff;
+                      border: ${mutual ? '2px solid #fbbf24' : '1px solid #fff'};
                       transform: rotate(45deg);
                       opacity: 0.9;
                     "></div>`,
-                    iconSize: [8, 8],
-                    iconAnchor: [4, 4],
+                    iconSize: [mutual ? 10 : 8, mutual ? 10 : 8],
+                    iconAnchor: [mutual ? 5 : 4, mutual ? 5 : 4],
                   }),
                 });
               } else {
                 // Circle marker for TX
                 marker = L.circleMarker([rLat, rLon], {
-                  radius: 4,
+                  radius: mutual ? 5 : 4,
                   fillColor: bandColor,
-                  color: '#fff',
-                  weight: 1,
+                  color: mutual ? '#fbbf24' : '#fff',
+                  weight: mutual ? 2 : 1,
                   opacity: 0.9,
                   fillOpacity: 0.8,
                 });
@@ -1725,7 +1744,7 @@ export const WorldMap = ({
               marker
                 .bindPopup(
                   `
-                <b data-qrz-call="${esc(displayCall)}" style="cursor:pointer">${esc(displayCall)}</b> <span style="color:#888;font-size:10px">${dirLabel}</span><br>
+                <b data-qrz-call="${esc(displayCall)}" style="cursor:pointer">${esc(displayCall)}</b> <span style="color:#888;font-size:10px">${dirLabel}</span>${mutual ? ' <span style="color:#fbbf24" title="Mutual reception — QSO possible">★</span>' : ''}<br>
                 ${esc(spot.mode)} @ ${esc(freqMHz)} MHz<br>
                 ${spot.snr !== null ? `SNR: ${spot.snr > 0 ? '+' : ''}${spot.snr} dB` : ''}
               `,
@@ -1744,7 +1763,15 @@ export const WorldMap = ({
         }
       });
     }
-  }, [pskReporterSpots, showPSKReporter, showPSKPaths, deLocation, bandColorVersion, bandPassesMapFilter]);
+  }, [
+    pskReporterSpots,
+    showPSKReporter,
+    showPSKPaths,
+    deLocation,
+    bandColorVersion,
+    bandPassesMapFilter,
+    pskMutualCalls,
+  ]);
 
   // Update WSJT-X markers (CQ callers with grid locators)
   useEffect(() => {
@@ -1986,6 +2013,7 @@ export const WorldMap = ({
           showWWBOTA={showWWBOTA}
           showPSKReporter={showPSKReporter}
           showPSKPaths={showPSKPaths}
+          showMutualReception={showMutualReception}
           showWSJTX={showWSJTX}
           onSpotClick={onSpotClick}
           hoveredSpot={hoveredSpot}

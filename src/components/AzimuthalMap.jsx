@@ -123,6 +123,7 @@ export default function AzimuthalMap({
   showWWBOTA,
   showPSKReporter,
   showPSKPaths = true,
+  showMutualReception = true,
   showWSJTX,
   onSpotClick,
   hoveredSpot,
@@ -587,6 +588,20 @@ export default function AzimuthalMap({
     }
 
     // ── PSK Reporter spots ───────────────────────────────
+    // Build mutual reception lookup for gold ring indicators
+    const pskMutualSet = new Set();
+    if (showMutualReception && pskReporterSpots?.length > 0) {
+      const txSet = new Set();
+      const rxSet = new Set();
+      for (const s of pskReporterSpots) {
+        if (s.direction === 'tx') txSet.add(`${s.receiver?.toUpperCase()}|${s.band}`);
+        else if (s.direction === 'rx') rxSet.add(`${s.sender?.toUpperCase()}|${s.band}`);
+      }
+      for (const key of txSet) {
+        if (rxSet.has(key)) pskMutualSet.add(key);
+      }
+    }
+
     if (showPSKReporter && pskReporterSpots?.length > 0) {
       pskReporterSpots.forEach((spot) => {
         const lat = parseFloat(spot.lat);
@@ -596,6 +611,8 @@ export default function AzimuthalMap({
         const band = normalizeBandKey(spot.band) || bandFromAnyFrequency(freqMHz || spot.freq);
         if (!bandPassesMapFilter(band)) return;
 
+        const displayCall = spot.direction === 'rx' ? spot.sender : spot.receiver;
+        const mutual = pskMutualSet.has(`${displayCall?.toUpperCase()}|${spot.band}`);
         const color = getBandColor(parseFloat(freqMHz));
         const p = toCanvas(lat, lon);
 
@@ -612,9 +629,16 @@ export default function AzimuthalMap({
           ctx.globalAlpha = 1;
         }
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, mutual ? 4 : 3, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
+        if (mutual) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
       });
     }
 
@@ -814,6 +838,7 @@ export default function AzimuthalMap({
     pskReporterSpots,
     showPSKReporter,
     showPSKPaths,
+    showMutualReception,
     wsjtxSpots,
     showWSJTX,
     hideOverlays,

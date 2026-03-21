@@ -799,6 +799,7 @@ export default function ClassicLayout(props) {
             showSatellites={mapLayers.showSatellites}
             showPSKReporter={mapLayers.showPSKReporter}
             showPSKPaths={mapLayers.showPSKPaths}
+            showMutualReception={config.showMutualReception !== false}
             wsjtxSpots={wsjtxMapSpots}
             showWSJTX={mapLayers.showWSJTX}
             showDXNews={mapLayers.showDXNews}
@@ -1313,6 +1314,7 @@ export default function ClassicLayout(props) {
             showSatellites={mapLayers.showSatellites}
             showPSKReporter={mapLayers.showPSKReporter}
             showPSKPaths={mapLayers.showPSKPaths}
+            showMutualReception={config.showMutualReception !== false}
             wsjtxSpots={wsjtxMapSpots}
             showWSJTX={mapLayers.showWSJTX}
             showDXNews={mapLayers.showDXNews}
@@ -1960,6 +1962,7 @@ export default function ClassicLayout(props) {
             showSatellites={mapLayers.showSatellites}
             showPSKReporter={mapLayers.showPSKReporter}
             showPSKPaths={mapLayers.showPSKPaths}
+            showMutualReception={config.showMutualReception !== false}
             wsjtxSpots={wsjtxMapSpots}
             showWSJTX={mapLayers.showWSJTX}
             showDXNews={mapLayers.showDXNews}

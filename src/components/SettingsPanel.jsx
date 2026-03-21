@@ -44,6 +44,7 @@ export const SettingsPanel = ({
   const [callsign, setCallsign] = useState(config?.callsign || '');
   const [headerSize, setheaderSize] = useState(config?.headerSize || 1.0);
   const [swapHeaderClocks, setSwapHeaderClocks] = useState(config?.swapHeaderClocks || false);
+  const [showMutualReception, setShowMutualReception] = useState(config?.showMutualReception ?? true);
   const [gridSquare, setGridSquare] = useState(config?.locator || '');
   const [lat, setLat] = useState(config?.location?.lat || 0);
   const [lon, setLon] = useState(config?.location?.lon || 0);
@@ -402,6 +403,7 @@ export const SettingsPanel = ({
       callsign: callsign.toUpperCase(),
       headerSize: headerSize,
       swapHeaderClocks,
+      showMutualReception,
       location: { lat: parseFloat(lat), lon: parseFloat(lon) },
       theme,
       customTheme,
@@ -2429,6 +2431,32 @@ export const SettingsPanel = ({
               </label>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
                 By default, UTC is shown first. Enable this to display Local Time first.
+              </div>
+            </div>
+
+            {/* Mutual Reception Indicator */}
+            <div style={{ marginBottom: '24px' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showMutualReception}
+                  onChange={(e) => setShowMutualReception(e.target.checked)}
+                  style={{ accentColor: 'var(--accent-amber)' }}
+                />
+                Show mutual reception indicator on PSK Reporter spots
+              </label>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Marks spots with a gold star (★) when a station hears you AND you hear them on the same band, indicating
+                a QSO is likely possible.
               </div>
             </div>
 
