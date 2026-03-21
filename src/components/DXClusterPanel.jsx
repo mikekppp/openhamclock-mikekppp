@@ -4,6 +4,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import { getBandColor } from '../utils/callsign.js';
+import { matchesDXSpotPath } from '../utils/dxClusterSpotMatcher';
 import { IconSearch, IconMap, IconGlobe } from './Icons.jsx';
 import CallsignLink from './CallsignLink.jsx';
 
@@ -216,7 +217,7 @@ export const DXClusterPanel = ({
             }
 
             const color = getBandColor(freqMHz);
-            const isHovered = hoveredSpot?.call === spot.call;
+            const isHovered = matchesDXSpotPath(hoveredSpot, spot);
 
             return (
               <div

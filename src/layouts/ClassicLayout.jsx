@@ -7,6 +7,7 @@ import { DXGridInput } from '../components/DXGridInput.jsx';
 import { DXFavorites } from '../components/DXFavorites.jsx';
 import { getBandColor, getBandColorForBand } from '../utils';
 import { calculateBearing, calculateDistance, formatDistance } from '../utils/geo.js';
+import { findDXPathForSpot, matchesDXSpotPath } from '../utils/dxClusterSpotMatcher';
 import CallsignLink from '../components/CallsignLink.jsx';
 import DonateButton from '../components/DonateButton.jsx';
 import { useRig } from '../contexts/RigContext.jsx';
@@ -155,7 +156,7 @@ export default function ClassicLayout(props) {
   const handleSpotClick = useCallback(
     (spot) => {
       tuneTo(spot);
-      const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
+      const path = findDXPathForSpot(dxClusterData.paths || [], spot);
       if (path && path.dxLat != null && path.dxLon != null) {
         handleDXChange({ lat: path.dxLat, lon: path.dxLon });
       }
@@ -239,7 +240,7 @@ export default function ClassicLayout(props) {
                 padding: '2px 0',
                 borderBottom: '1px solid #111',
                 cursor: 'pointer',
-                background: hoveredSpot?.call === spot.call ? '#222' : 'transparent',
+                background: matchesDXSpotPath(hoveredSpot, spot) ? '#222' : 'transparent',
               }}
               onMouseEnter={() => setHoveredSpot(spot)}
               onMouseLeave={() => setHoveredSpot(null)}
@@ -1541,14 +1542,14 @@ export default function ClassicLayout(props) {
                     gap: '4px',
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     cursor: 'pointer',
-                    background: hoveredSpot?.call === spot.call ? 'var(--bg-tertiary)' : 'transparent',
+                    background: matchesDXSpotPath(hoveredSpot, spot) ? 'var(--bg-tertiary)' : 'transparent',
                     fontSize: '14px',
                   }}
                   onMouseEnter={() => setHoveredSpot(spot)}
                   onMouseLeave={() => setHoveredSpot(null)}
                   onClick={() => {
                     tuneTo(spot);
-                    const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
+                    const path = findDXPathForSpot(dxClusterData.paths || [], spot);
                     if (path && path.dxLat != null && path.dxLon != null) {
                       handleDXChange({ lat: path.dxLat, lon: path.dxLon });
                     }
@@ -2095,14 +2096,14 @@ export default function ClassicLayout(props) {
                   gap: '4px',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
                   cursor: 'pointer',
-                  background: hoveredSpot?.call === spot.call ? 'var(--bg-tertiary)' : 'transparent',
+                  background: matchesDXSpotPath(hoveredSpot, spot) ? 'var(--bg-tertiary)' : 'transparent',
                   fontSize: '14px',
                 }}
                 onMouseEnter={() => setHoveredSpot(spot)}
                 onMouseLeave={() => setHoveredSpot(null)}
                 onClick={() => {
                   tuneTo(spot);
-                  const path = (dxClusterData.paths || []).find((p) => p.dxCall === spot.call);
+                  const path = findDXPathForSpot(dxClusterData.paths || [], spot);
                   if (path && path.dxLat != null && path.dxLon != null) {
                     handleDXChange({ lat: path.dxLat, lon: path.dxLon });
                   }
