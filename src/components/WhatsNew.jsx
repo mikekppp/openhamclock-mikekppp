@@ -55,6 +55,11 @@ const CHANGELOG = [
         desc: 'See other OpenHamClock operators on the map in real time. Every configured user automatically reports their presence — enable the Active Users layer in Map Layers to see who else is online. Your own callsign shows in green, others in purple. Found under the new Community category in Settings.',
       },
       {
+        icon: '🔔',
+        title: 'Audio Alerts for New Spots',
+        desc: 'Get audible notifications when new items appear in POTA, SOTA, WWFF, WWBOTA, DX Cluster, DXpeditions, or Contests. Each feed gets its own configurable tone from 9 Web Audio presets (Ping, Chirp, Two-Tone, etc.). All off by default — enable per feed in Settings → Alerts tab. Includes master volume control and a preview button to hear each tone.',
+      },
+      {
         icon: '📻',
         title: 'SDR Integration — FlexRadio SmartSDR & RTL-SDR',
         desc: 'Rig-bridge now supports FlexRadio 6000/8000 series via native SmartSDR TCP API (port 4992) and cheap RTL-SDR dongles via rtl_tcp. No rigctld or Windows-only software needed.',

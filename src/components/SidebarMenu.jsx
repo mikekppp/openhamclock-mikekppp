@@ -61,6 +61,7 @@ export default function SidebarMenu({
       { id: 'satellites', icon: '🛰️', label: t('station.settings.tab.title.satellites') },
       { id: 'profiles', icon: '👤', label: t('station.settings.tab.title.profiles') },
       { id: 'community', icon: '🌐', label: t('station.settings.tab.title.community') },
+      { id: 'alerts', icon: '🔔', label: 'Alerts' },
     ],
     [t],
   );

@@ -75,6 +75,7 @@ npm run dev
   - [Analog Clock](#analog-clock)
 - [Themes and Layouts](#themes-and-layouts)
   - [EmComm Layout](#emcomm-layout)
+- [Audio Alerts](#audio-alerts)
 - [Map Layers and Plugins](#map-layers-and-plugins)
 - [Languages](#languages)
 - [Profiles](#profiles)
@@ -672,6 +673,32 @@ This renders as three color-coded pills on the station card, and the values are 
 - NWS alert polygons color-coded by severity
 - Shelter markers with capacity popups
 - EmComm APRS station markers with resource token popups
+
+---
+
+## Audio Alerts
+
+OpenHamClock can play audible tones when new items appear in data feeds — useful for monitoring while doing other tasks in the shack.
+
+**Supported feeds:** POTA Spots, SOTA Spots, WWFF Spots, WWBOTA Spots, DX Cluster, DXpeditions, Contests.
+
+**How to enable:**
+
+1. Open **Settings** and click the **Alerts** tab.
+2. Toggle any feed **ON** to enable audio alerts for that feed.
+3. Select a tone from the dropdown — 9 Web Audio presets are available (Ping, High Ping, Low Tone, Sharp, Beep, Two-Tone, Simple, Chime, Chirp).
+4. Click the speaker button to preview the selected tone.
+5. Adjust the **Master Volume** slider to set the overall alert volume.
+
+All feeds default to **OFF**. Settings persist in localStorage.
+
+**Behavior notes:**
+
+- Alerts are suppressed on initial page load (no noise from existing data).
+- Alerts are suppressed for 5 seconds after returning to a background tab (prevents a flood of tones from stale data refreshing).
+- A 10-second cooldown per feed prevents rapid-fire alerts from high-volume feeds like DX Cluster.
+- One tone plays per batch of new items, not per individual item.
+- Tones are generated via the Web Audio API — no sound files are downloaded.
 
 ---
 
