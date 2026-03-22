@@ -32,7 +32,7 @@ const CHANGELOG = [
     version: '26.1.1',
     date: '2026-03-20',
     heading:
-      'EmComm layout with APRS resource tracking, redesigned Classic layout, new versioning scheme, SDR integration, DX cluster text filter, RBN spotter filter, DX favorites, improved activation panel icons, and bug fixes.',
+      'EmComm layout with APRS resource tracking, redesigned Classic layout, new versioning scheme, SDR integration, DX cluster text filter, RBN spotter filter, DX favorites, mutual reception indicator, UDP spot listener, swappable header clocks, Classic VOACAP heatmap, and bug fixes.',
     features: [
       {
         icon: '🚨',
@@ -103,6 +103,36 @@ const CHANGELOG = [
         icon: '🗺️',
         title: 'Azimuthal Projection — All Map Styles',
         desc: 'Azimuthal projection now supports all tile map styles (satellite, terrain, dark, streets, etc.) — projection is a separate toggle from style.',
+      },
+      {
+        icon: '🔄',
+        title: 'Swap Header Clocks',
+        desc: 'New toggle in Settings → Display to show Local Time before UTC in the header. Useful for operators who primarily reference local time.',
+      },
+      {
+        icon: '★',
+        title: 'Mutual Reception Indicator',
+        desc: 'PSK Reporter spots now show a gold star when a station hears you AND you hear them on the same band — indicating a QSO is likely possible. Gold ring on map markers too. Toggle on/off in Settings → Display.',
+      },
+      {
+        icon: '📻',
+        title: 'UDP Spot Listener',
+        desc: 'DX Cluster now supports UDP as a native data source. Receive spots from local network apps like MacLoggerDX without internet telnet access. Supports JSON, XML, ADIF, and delimited text formats. Configure in Settings → Station.',
+      },
+      {
+        icon: '📊',
+        title: 'Classic Layout — VOACAP Heatmap',
+        desc: 'The Classic layout auto-rotating center pane now includes a compact VOACAP propagation heatmap showing 24-hour band reliability predictions alongside the existing SSN/SFI and propagation views.',
+      },
+      {
+        icon: '🖥️',
+        title: 'Classic Layout — UI Improvements',
+        desc: 'Layer toggle buttons (DX, POTA, SOTA, etc.) moved from top-right to bottom-right of the map to avoid overlapping other controls. Band legend enlarged for better readability.',
+      },
+      {
+        icon: '🎨',
+        title: 'Activation Panel Consolidation',
+        desc: 'POTA, SOTA, WWFF, and WWBOTA panels now share a unified map marker definition system, reducing code duplication and ensuring consistent styling across all activation types.',
       },
     ],
   },

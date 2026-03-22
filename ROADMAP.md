@@ -98,38 +98,29 @@ Adopted year-based versioning: X = year, Y = visual/UI, Z = backend. The jump fr
 
 ---
 
-## Roadmap
+## What's Coming
 
-### v26.2.0 — UI & Display Polish
+### Rig Control Improvements
 
-- [ ] Swap UTC/Local time position in header (setting)
-- [ ] Mutual reception indicator on PSK Reporter spots (gold star for QSO-possible stations)
-- [ ] Classic layout: layer toggle buttons moved to bottom-right, larger band legend
-- [ ] VOACAP heatmap in Classic layout auto-rotating pane
-- [ ] Activation panel consolidation (shared mapDefs, reduced duplication)
+- Hamlib enable/disable toggle without restarting (#797)
+- Rig config persistence across updates (#453)
+- PTT state display and control in rig bridge (#707)
+- Rig bridge auto-launch option on startup
 
-### v26.3.0 — Rig Control Improvements
+### EmComm & APRS Expansion
 
-- [ ] Hamlib enable/disable toggle without restarting (#797)
-- [ ] Rig config persistence across updates (#453)
-- [ ] PTT state display and control in rig bridge (#707)
-- [ ] Rig bridge auto-launch option on startup
+- Winlink gateway map layer (#297)
+- APRS messaging support (send/receive)
+- Enhanced shelter/resource tracking
+- SKYWARN net integration improvements
 
-### v26.4.0 — EmComm & APRS Expansion
+### DX Cluster & Spots
 
-- [ ] Winlink gateway map layer (#297) — blocked on API key
-- [ ] APRS messaging support (send/receive)
-- [ ] Enhanced shelter/resource tracking
-- [ ] SKYWARN net integration improvements
+- Enhanced spot deduplication across sources
+- Cross-source spot correlation (DX Cluster + PSK Reporter + RBN)
+- Improved frequency-based mode inference
 
-### v26.5.0 — DX Cluster & Spots
-
-- [ ] UDP spot listener (merged to Staging from PR #761)
-- [ ] Enhanced spot deduplication across sources
-- [ ] Cross-source spot correlation (DX Cluster + PSK Reporter + RBN)
-- [ ] Improved frequency-based mode inference
-
-### Future Considerations
+### On the Horizon
 
 - **Logbook integration** — ADIF import/export, QSO logging directly from spots
 - **Contest mode** — Dedicated layout optimized for contest operation with rate meters and multiplier tracking
