@@ -58,6 +58,9 @@ export const SettingsPanel = ({
   const [udpDxCluster, setUdpDxCluster] = useState(config?.udpDxCluster || { host: '', port: 12060 });
   const [lowMemoryMode, setLowMemoryMode] = useState(config?.lowMemoryMode || false);
   const [preventSleep, setPreventSleep] = useState(config?.preventSleep || false);
+  const [displaySchedule, setDisplaySchedule] = useState(
+    config?.displaySchedule || { enabled: false, sleepTime: '23:00', wakeTime: '07:00' },
+  );
   const [distUnits, setDistUnits] = useState(config?.allUnits?.dist || config?.units || 'imperial');
   const [tempUnits, setTempUnits] = useState(config?.allUnits?.temp || config?.units || 'imperial');
   const [pressUnits, setPressUnits] = useState(config?.allUnits?.press || config?.units || 'imperial');
@@ -415,6 +418,7 @@ export const SettingsPanel = ({
       udpDxCluster,
       lowMemoryMode,
       preventSleep,
+      displaySchedule,
       // units,
       allUnits: { dist: distUnits, temp: tempUnits, press: pressUnits },
       propagation: { mode: propMode, power: parseFloat(propPower) || 100 },
@@ -1571,6 +1575,93 @@ export const SettingsPanel = ({
                 </div>
               </div>
             </div>
+
+            {/* Display Schedule */}
+            <div style={{ marginBottom: '20px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  color: 'var(--text-muted)',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                }}
+              >
+                Display Schedule
+              </label>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  color: 'var(--text-primary)',
+                  marginBottom: '10px',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={displaySchedule.enabled}
+                  onChange={(e) => setDisplaySchedule({ ...displaySchedule, enabled: e.target.checked })}
+                  style={{ accentColor: 'var(--accent-amber)' }}
+                />
+                Enable scheduled display sleep
+              </label>
+              {displaySchedule.enabled && (
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px' }}>
+                  <div>
+                    <label
+                      style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}
+                    >
+                      Sleep at
+                    </label>
+                    <input
+                      type="time"
+                      value={displaySchedule.sleepTime}
+                      onChange={(e) => setDisplaySchedule({ ...displaySchedule, sleepTime: e.target.value })}
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        padding: '6px 10px',
+                        fontSize: '13px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}
+                    >
+                      Wake at
+                    </label>
+                    <input
+                      type="time"
+                      value={displaySchedule.wakeTime}
+                      onChange={(e) => setDisplaySchedule({ ...displaySchedule, wakeTime: e.target.value })}
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        padding: '6px 10px',
+                        fontSize: '13px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                {displaySchedule.enabled
+                  ? `Display will go black at ${displaySchedule.sleepTime} and wake at ${displaySchedule.wakeTime} (local time). The wake lock will also be released so your TV or monitor can sleep.`
+                  : 'Set a daily schedule to automatically black out the display and release the wake lock. Ideal for shack TVs and kiosk displays.'}
+              </div>
+            </div>
+
             <div style={{ marginBottom: '20px' }}>
               <label
                 style={{

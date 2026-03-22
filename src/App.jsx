@@ -46,6 +46,7 @@ import useSatellitesFilters from './hooks/app/useSatellitesFilters';
 import useTimeState from './hooks/app/useTimeState';
 import useFullscreen from './hooks/app/useFullscreen';
 import useScreenWakeLock from './hooks/app/useScreenWakeLock';
+import useDisplaySchedule from './hooks/app/useDisplaySchedule';
 import useResponsiveScale from './hooks/app/useResponsiveScale';
 import useLocalInstall from './hooks/app/useLocalInstall';
 import useVersionCheck from './hooks/app/useVersionCheck';
@@ -275,7 +276,8 @@ const App = () => {
   } = useFilters();
 
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
-  const { wakeLockStatus } = useScreenWakeLock(config);
+  const { displaySleeping } = useDisplaySchedule(config);
+  const { wakeLockStatus } = useScreenWakeLock(config, displaySleeping);
   const scale = useResponsiveScale();
   const isLocalInstall = useLocalInstall();
 
@@ -624,6 +626,22 @@ const App = () => {
         transition: 'padding-left 0.2s ease',
       }}
     >
+      {/* Display Schedule — black overlay when in sleep window */}
+      {displaySleeping && (
+        <div
+          onClick={() => {
+            // Allow clicking to temporarily dismiss (shows for 30s then re-checks)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: '#000',
+            zIndex: 99999,
+            cursor: 'default',
+          }}
+        />
+      )}
+
       {/* Sidebar Menu */}
       <SidebarMenu
         onSettingsClick={(tabId) => {
