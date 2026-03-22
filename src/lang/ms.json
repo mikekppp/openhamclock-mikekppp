@@ -456,6 +456,7 @@
   "weather.wind.WNW": "BUB",
   "weather.wind.WSW": "BSB",
   "app.rigControl.error.unauthorized": "Pengesahan gagal — semak Token API dalam tetapan kawalan rig",
+  "app.rigControl.error.pttDisabled": "PTT dinyahaktifkan pada rig-bridge — aktifkannya dalam tab Integrasi di http://localhost:5555",
   "station.settings.rigControl.apiToken": "Token API",
   "station.settings.rigControl.apiToken.hint": "Salin dari halaman persediaan rig-bridge (http://localhost:5555)",
   "station.settings.rigControl.apiToken.placeholder": "Tampal token di sini",

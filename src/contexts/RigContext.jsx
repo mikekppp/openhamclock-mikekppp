@@ -186,16 +186,22 @@ export const RigProvider = ({ children, rigConfig }) => {
         });
         if (res.status === 401) {
           setError('unauthorized');
-          // Revert optimistic update — PTT was not sent
           setRigState((prev) => ({ ...prev, ptt: !enabled }));
           return;
         }
-        // SSE will push update
+        if (res.status === 403) {
+          // PTT is disabled on rig-bridge (pttEnabled: false in its config)
+          setError('ptt-disabled');
+          setRigState((prev) => ({ ...prev, ptt: !enabled }));
+          return;
+        }
+        // Success — clear any previous PTT-related error
+        if (error === 'ptt-disabled') setError(null);
       } catch (err) {
         console.error('Failed to set PTT:', err);
       }
     },
-    [rigUrl, rigConfig, rigHeaders],
+    [rigUrl, rigConfig, rigHeaders, error],
   );
 
   // Helper: Tune To Frequency (Centralized Logic)

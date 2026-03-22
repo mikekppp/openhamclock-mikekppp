@@ -456,6 +456,7 @@
   "weather.wind.WNW": "ONO",
   "weather.wind.WSW": "OSO",
   "app.rigControl.error.unauthorized": "Error d'autenticació — comproveu el Token API a la configuració del control de l'equip",
+  "app.rigControl.error.pttDisabled": "El PTT està desactivat al rig-bridge — activa'l a la pestanya Integracions a http://localhost:5555",
   "station.settings.rigControl.apiToken": "Token API",
   "station.settings.rigControl.apiToken.hint": "Copia de la pàgina de configuració de rig-bridge (http://localhost:5555)",
   "station.settings.rigControl.apiToken.placeholder": "Enganxa el token aquí",

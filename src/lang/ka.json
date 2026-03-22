@@ -456,6 +456,7 @@
   "weather.wind.WNW": "დჩდ",
   "weather.wind.WSW": "დს/დ",
   "app.rigControl.error.unauthorized": "ავტორიზაცია ვერ მოხდა — შეამოწმეთ API ტოკენი ანტენის კონტროლის პარამეტრებში",
+  "app.rigControl.error.pttDisabled": "PTT გამორთულია rig-bridge-ზე — ჩართეთ ინტეგრაციების ჩანართში http://localhost:5555-ზე",
   "station.settings.rigControl.apiToken": "API ტოკენი",
   "station.settings.rigControl.apiToken.hint": "დააკოპირეთ rig-bridge-ის კონფიგურაციის გვერდიდან (http://localhost:5555)",
   "station.settings.rigControl.apiToken.placeholder": "ჩასვით ტოკენი აქ",

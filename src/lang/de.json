@@ -456,6 +456,7 @@
   "weather.wind.WNW": "WNW",
   "weather.wind.WSW": "WSW",
   "app.rigControl.error.unauthorized": "Authentifizierung fehlgeschlagen – API-Token in den Rig-Steuerungseinstellungen prüfen",
+  "app.rigControl.error.pttDisabled": "PTT ist auf dem Rig-Bridge deaktiviert — aktiviere es im Tab Integrationen unter http://localhost:5555",
   "station.settings.rigControl.apiToken": "API-Token",
   "station.settings.rigControl.apiToken.hint": "Von der rig-bridge-Einrichtungsseite kopieren (http://localhost:5555)",
   "station.settings.rigControl.apiToken.placeholder": "Token hier einfügen",
