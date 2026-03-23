@@ -85,6 +85,10 @@ export const SettingsPanel = ({
       return false;
     }
   });
+  const [wsjtxMulticastEnabled, setWsjtxMulticastEnabled] = useState(config?.wsjtxRelayMulticast.enabled || false);
+  const [wsjtxMulticastAddress, setWsjtxMulticastAddress] = useState(
+    config?.wsjtxRelayMulticast.address || '224.0.0.1',
+  );
 
   // Local-only integration flags
   const [n3fjpEnabled, setN3fjpEnabled] = useState(() => {
@@ -428,7 +432,7 @@ export const SettingsPanel = ({
       // units,
       allUnits: { dist: distUnits, temp: tempUnits, press: pressUnits },
       propagation: { mode: propMode, power: parseFloat(propPower) || 100 },
-
+      wsjtxRelayMulticast: { enabled: wsjtxMulticastEnabled, address: wsjtxMulticastAddress },
       rigControl: {
         enabled: rigEnabled,
         host: rigHost,
@@ -1125,6 +1129,50 @@ export const SettingsPanel = ({
                 >
                   {t('station.settings.units.pressure')}: {unitString(pressUnits)}
                 </button>
+              </div>
+            </div>
+
+            {/* WSJTX Relay Multicast Options */}
+            <div style={{ marginBottom: '20px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  color: 'var(--text-muted)',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                }}
+              >
+                🔁 WSJTX Relay Multicast Options
+              </label>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.4 }}>
+                <input
+                  type="checkbox"
+                  checked={wsjtxMulticastEnabled}
+                  onChange={(e) => setWsjtxMulticastEnabled(e.target.checked)}
+                  style={{ marginRight: '8px' }}
+                />
+                <span style={{ color: 'var(--text-primary)', fontSize: '14px' }}>Use multicast address &nbsp;</span>
+                <input
+                  type="text"
+                  value={wsjtxMulticastAddress}
+                  onChange={(e) => setWsjtxMulticastAddress(e.target.value.toUpperCase())}
+                  style={{
+                    width: '10%',
+                    marginLeft: '8px',
+                    padding: '8px 12px',
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '4px',
+                    color: wsjtxMulticastEnabled ? 'var(--text-primary)' : 'var(--text-secondary',
+                    fontSize: '12px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                If you are going to run a wsjt-x relay, define here if you need a multicast listener and what address it
+                should be using.
               </div>
             </div>
 

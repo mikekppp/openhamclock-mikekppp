@@ -32,7 +32,7 @@ const CHANGELOG = [
     version: '26.1.1',
     date: '2026-03-20',
     heading:
-      'EmComm layout with APRS resource tracking, redesigned Classic layout, new versioning scheme, SDR integration, DX cluster text filter, RBN spotter filter, DX favorites, mutual reception indicator, UDP spot listener, swappable header clocks, Classic VOACAP heatmap, and bug fixes.',
+      'EmComm layout with APRS resource tracking, redesigned Classic layout, new versioning scheme, SDR integration, DX cluster text filter, RBN spotter filter, DX favorites, mutual reception indicator, UDP spot listener, WSJT-X multicast, swappable header clocks, Classic VOACAP heatmap, and bug fixes.',
     features: [
       {
         icon: '🚨',
@@ -133,6 +133,11 @@ const CHANGELOG = [
         icon: '🎨',
         title: 'Activation Panel Consolidation',
         desc: 'POTA, SOTA, WWFF, and WWBOTA panels now share a unified map marker definition system, reducing code duplication and ensuring consistent styling across all activation types.',
+      },
+      {
+        icon: '📡',
+        title: 'WSJT-X Relay — Multicast Support',
+        desc: 'The WSJT-X relay now supports UDP multicast, allowing multiple applications (WSJT-X, GridTracker, JTAlert, etc.) to receive the same UDP stream without port conflicts. Configure a multicast address in Settings → Station, and the relay download scripts include it automatically. Note: multicast support in the standalone relay is an interim solution — the longer-term plan is to consolidate relay functionality into rig-bridge.',
       },
     ],
   },
