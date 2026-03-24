@@ -981,6 +981,24 @@ module.exports = function (app, ctx) {
     return 'CLOSED';
   }
 
+  // ── Pre-warm cache for DX spots ──────────────────────────────────
+  // Called from dxcluster.js when new DX callsigns appear.
+  // Fires background ITURHFProp requests so that by the time a user
+  // clicks the spot, the precise P.533-14 prediction is already cached.
+  function prewarmPropagation(deLat, deLon, dxLat, dxLon) {
+    if (!ITURHFPROP_URL || Date.now() - iturhfpropDown < ITURHFPROP_BACKOFF) return;
+
+    const currentMonth = new Date().getMonth() + 1;
+    // Use defaults for mode/power — most users are SSB/100W
+    const pw = 100;
+    const gn = 0;
+    getSolarData().then(({ ssn }) => {
+      const key = `h-${roundPath(deLat, deLon)}-${roundPath(dxLat, dxLon)}-${ssn}-${currentMonth}-${pw}-${gn}`;
+      if (ituCacheGet(iturhfpropHourlyMap, key)) return; // already cached
+      queueBackgroundFetch(key, () => fetchITURHFPropHourly(deLat, deLon, dxLat, dxLon, ssn, currentMonth, pw, gn));
+    });
+  }
+
   // Return shared state
-  return { PROP_HEATMAP_CACHE };
+  return { PROP_HEATMAP_CACHE, prewarmPropagation };
 };
