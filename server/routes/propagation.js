@@ -496,7 +496,7 @@ module.exports = function (app, ctx) {
   }
 
   const PROP_HEATMAP_CACHE = {};
-  const PROP_HEATMAP_TTL = 5 * 60 * 1000; // 5 minutes
+  const PROP_HEATMAP_TTL = 15 * 60 * 1000; // 15 minutes — propagation changes slowly
   const PROP_HEATMAP_MAX_ENTRIES = 200; // Hard cap on cache entries
 
   // Periodic cleanup: purge expired heatmap cache entries every 10 minutes
@@ -531,8 +531,10 @@ module.exports = function (app, ctx) {
   );
 
   app.get('/api/propagation/heatmap', async (req, res) => {
-    const deLat = parseFloat(req.query.deLat) || 0;
-    const deLon = parseFloat(req.query.deLon) || 0;
+    // Round to whole degrees — propagation doesn't meaningfully differ within 1°,
+    // and this dramatically improves cache hit rate across users
+    const deLat = Math.round(parseFloat(req.query.deLat) || 0);
+    const deLon = Math.round(parseFloat(req.query.deLon) || 0);
     const freq = parseFloat(req.query.freq) || 14; // MHz, default 20m
     const gridSize = Math.max(5, Math.min(20, parseInt(req.query.grid) || 10)); // 5-20° grid
     const txMode = (req.query.mode || 'SSB').toUpperCase();
