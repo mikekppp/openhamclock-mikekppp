@@ -5,6 +5,7 @@
 # Stage 1: Build Frontend
 # ============================================
 FROM node:22-alpine AS builder
+ARG CACHE_BUST=1
 
 WORKDIR /app
 
