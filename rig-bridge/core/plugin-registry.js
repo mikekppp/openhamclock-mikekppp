@@ -57,7 +57,7 @@ class PluginRegistry {
     }
 
     // Integration plugins (non-rig, run in parallel alongside the rig plugin)
-    for (const file of ['wsjtx-relay']) {
+    for (const file of ['wsjtx-relay', 'mshv', 'jtdx', 'js8call']) {
       try {
         const p = require(`../plugins/${file}`);
         this._descriptors.set(p.id, p);

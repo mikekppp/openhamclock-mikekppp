@@ -55,7 +55,7 @@ function resolveConfigPath() {
 const { dir: CONFIG_DIR, path: CONFIG_PATH } = resolveConfigPath();
 
 // Increment when DEFAULT_CONFIG structure changes (new keys, renamed keys, etc.)
-const CONFIG_VERSION = 2;
+const CONFIG_VERSION = 3;
 
 const DEFAULT_CONFIG = {
   configVersion: CONFIG_VERSION,
@@ -116,6 +116,25 @@ const DEFAULT_CONFIG = {
     // Set to '0.0.0.0' only if WSJT-X runs on a separate machine and multicast is not used.
     udpBindAddress: '', // '' = use secure default (127.0.0.1, or 0.0.0.0 when multicast enabled)
   },
+  // Digital mode software plugins — bidirectional UDP control
+  mshv: {
+    enabled: false,
+    udpPort: 2239,
+    bindAddress: '127.0.0.1',
+    verbose: false,
+  },
+  jtdx: {
+    enabled: false,
+    udpPort: 2238,
+    bindAddress: '127.0.0.1',
+    verbose: false,
+  },
+  js8call: {
+    enabled: false,
+    udpPort: 2242,
+    bindAddress: '127.0.0.1',
+    verbose: false,
+  },
 };
 
 let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
@@ -144,6 +163,9 @@ function loadConfig() {
         wsjtxRelay: { ...DEFAULT_CONFIG.wsjtxRelay, ...(raw.wsjtxRelay || {}) },
         smartsdr: { ...(raw.smartsdr || {}) },
         rtltcp: { ...(raw.rtltcp || {}) },
+        mshv: { ...DEFAULT_CONFIG.mshv, ...(raw.mshv || {}) },
+        jtdx: { ...DEFAULT_CONFIG.jtdx, ...(raw.jtdx || {}) },
+        js8call: { ...DEFAULT_CONFIG.js8call, ...(raw.js8call || {}) },
         // Coerce logging to boolean in case the stored value is a string
         logging: raw.logging !== undefined ? !!raw.logging : DEFAULT_CONFIG.logging,
       });
@@ -154,7 +176,7 @@ function loadConfig() {
         for (const key of Object.keys(DEFAULT_CONFIG)) {
           if (!(key in raw)) newKeys.push(key);
         }
-        for (const section of ['radio', 'tci', 'wsjtxRelay']) {
+        for (const section of ['radio', 'tci', 'wsjtxRelay', 'mshv', 'jtdx', 'js8call']) {
           if (DEFAULT_CONFIG[section] && raw[section]) {
             for (const key of Object.keys(DEFAULT_CONFIG[section])) {
               if (!(key in raw[section])) newKeys.push(`${section}.${key}`);
