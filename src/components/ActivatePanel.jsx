@@ -166,50 +166,66 @@ export const ActivatePanel = ({
               <div
                 key={`${spot.call}-${spot.ref}-${i}`}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '62px 72px 58px 1fr',
-                  gap: '4px',
                   padding: '3px 0',
                   borderBottom: i < spots.length - 1 ? '1px solid var(--border-color)' : 'none',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={() => onHoverSpot?.(spot)}
-                onMouseLeave={() => onHoverSpot?.(null)}
-                onClick={() => {
-                  onSpotClick?.(spot);
                 }}
               >
-                <span
+                <div
                   style={{
-                    color: mapDefs.color,
-                    fontWeight: '600',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    display: 'grid',
+                    gridTemplateColumns: '62px 72px 58px 1fr',
+                    gap: '4px',
+                    padding: '3px 0',
+                    // borderBottom: i < spots.length - 1 ? '1px solid var(--border-color)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={() => onHoverSpot?.(spot)}
+                  onMouseLeave={() => onHoverSpot?.(null)}
+                  onClick={() => {
+                    onSpotClick?.(spot);
                   }}
                 >
-                  <CallsignLink call={spot.call} color={mapDefs.color} fontWeight="600" />
-                </span>
-                <span
-                  style={{
-                    color: 'var(--text-muted)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                  title={`${spot.ref} - ${spot.name}`}
-                >
-                  {spot.ref}
-                </span>
-                <span style={{ color: 'var(--accent-cyan)', textAlign: 'right' }} title={`${spot.freq} ${spot.mode}`}>
-                  {(() => {
-                    if (!spot.freq) return '?';
-                    const freqVal = parseFloat(spot.freq);
-                    // Already in MHz in the hook
-                    return freqVal.toFixed(3);
-                  })()}
-                </span>
-                <span style={{ color: 'var(--text-muted)', textAlign: 'right', fontSize: '9px' }}>{spot.time}</span>
+                  <span
+                    style={{
+                      color: mapDefs.color,
+                      fontWeight: '600',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <CallsignLink call={spot.call} color={mapDefs.color} fontWeight="600" />
+                  </span>
+                  <span
+                    style={{
+                      color: 'var(--text-muted)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={`${spot.ref} - ${spot.name}`}
+                  >
+                    {spot.ref}
+                  </span>
+                  <span style={{ color: 'var(--accent-cyan)', textAlign: 'right' }} title={`${spot.freq} ${spot.mode}`}>
+                    {(() => {
+                      if (!spot.freq) return '?';
+                      const freqVal = parseFloat(spot.freq);
+                      // Already in MHz in the hook
+                      return freqVal.toFixed(3);
+                    })()}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', textAlign: 'right', fontSize: '9px' }}>{spot.time}</span>
+                </div>
+                {spot.comments.length > 0 ? (
+                  <div>
+                    <center>
+                      <i>{spot.comments}</i>
+                    </center>
+                  </div>
+                ) : (
+                  ''
+                )}
               </div>
             ))}
           </div>
