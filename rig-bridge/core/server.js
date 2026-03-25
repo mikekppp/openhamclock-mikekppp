@@ -1003,7 +1003,7 @@ function buildSetupHtml(version, firstRunToken = null) {
         });
         if (res.ok) {
           showToast(enabled ? 'Plugin enabled — restart rig-bridge to activate' : 'Plugin disabled');
-          loadConfig(); // Refresh UI
+          loadApp(); // Refresh UI
         } else {
           showToast('Failed to save', true);
         }
