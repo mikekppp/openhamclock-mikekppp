@@ -38,9 +38,30 @@ export const RigProvider = ({ children, rigConfig }) => {
   });
 
   const [error, setError] = useState(null);
+  const [rigBridgeStatus, setRigBridgeStatus] = useState(null); // health check result
 
   // Construct URL from config or default
   const rigUrl = buildRigUrl(rigConfig);
+
+  // Server-side health check proxy — avoids CORS, diagnoses connection issues
+  const checkRigBridgeHealth = useCallback(async () => {
+    try {
+      const host = rigConfig?.host?.trim() || 'http://localhost';
+      const port = rigConfig?.port || 5555;
+      const res = await fetch(`/api/rig-bridge/status?host=${encodeURIComponent(host)}&port=${port}`);
+      if (res.ok) {
+        const status = await res.json();
+        setRigBridgeStatus(status);
+        if (status.reachable && status.auth === 'enabled' && !apiToken) {
+          setError('needs-token');
+        } else if (!status.reachable) {
+          setError('not-reachable');
+        }
+      }
+    } catch (e) {
+      // Server-side proxy not available (cloud instance, etc.)
+    }
+  }, [rigConfig, apiToken]);
 
   // Build auth headers — only set when a token is configured
   const apiToken = rigConfig?.apiToken?.trim() || '';
@@ -111,6 +132,8 @@ export const RigProvider = ({ children, rigConfig }) => {
         // Only log first failure and periodic reminders
         if (failCount === 1) {
           console.warn(`[RigContext] rig-bridge not reachable at ${rigUrl} — will retry with backoff`);
+          // Use server-side proxy to diagnose (avoids CORS issues)
+          checkRigBridgeHealth();
         }
 
         // Exponential backoff: 5s → 10s → 20s → 40s → ... → 5min cap
@@ -313,6 +336,7 @@ export const RigProvider = ({ children, rigConfig }) => {
     enabled: rigConfig?.enabled,
     tuneEnabled: rigConfig?.tuneEnabled,
     error,
+    rigBridgeStatus,
     setFreq,
     setMode,
     setPTT,
