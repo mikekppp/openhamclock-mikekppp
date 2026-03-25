@@ -29,6 +29,62 @@ const SYMBOL_LABELS = {
   '\\y': 'Skywarn',
 };
 
+// APRS symbol to icon mapping for station type display
+const SYMBOL_ICONS = {
+  // Emergency / infrastructure
+  '/o': '🏛️',
+  '\\z': '🏥',
+  '\\!': '🚨',
+  '/+': '✚',
+  '\\a': '📡',
+  '\\y': '🌪️',
+  Eo: '🏛️',
+  So: '🏥',
+  // Mobile / portable
+  '/>': '🚗',
+  '/[': '🧑',
+  '/b': '🚲',
+  '/R': '🚐',
+  '/u': '🚌',
+  '/j': '🏎️',
+  '/v': '🚐',
+  '/k': '🚚',
+  '/Y': '⛵',
+  '/X': '🚁',
+  '/^': '✈️',
+  '\\>': '🚗',
+  '\\v': '🚐',
+  // Fixed stations
+  '/-': '🏠',
+  '/a': '🏥',
+  '/r': '📡',
+  '/I': '📻',
+  '/&': '◆',
+  '\\-': '🏠',
+  '\\r': '📡',
+  // Weather
+  '/_': '🌤️',
+  '/W': '🌡️',
+  '\\W': '🌡️',
+  // Digipeaters / infrastructure
+  '/#': '⬡',
+  '/D': '🔁',
+};
+
+function getStationIcon(symbol) {
+  if (!symbol) return '📍';
+  return SYMBOL_ICONS[symbol] || '📍';
+}
+
+function getStationType(symbol) {
+  if (!symbol) return 'unknown';
+  const mobile = new Set(['/>', '\\>', '/[', '/b', '/R', '/u', '/j', '/v', '/k', '/Y', '/X', '/^', '\\v']);
+  if (mobile.has(symbol)) return 'mobile';
+  const fixed = new Set(['/-', '\\-', '/o', '\\z', '/a', '/r', '\\r', '/I', '/#', '/D', 'Eo', 'So']);
+  if (fixed.has(symbol)) return 'fixed';
+  return 'unknown';
+}
+
 const TOKEN_META = {
   Beds: { label: 'Beds', icon: '🛏️', color: '#22d3ee' },
   Water: { label: 'Water', icon: '💧', color: '#3b82f6' },
@@ -85,6 +141,8 @@ export default function EmcommLayout(props) {
   const { t } = useTranslation();
   const [seconds, setSeconds] = useState(() => String(new Date().getUTCSeconds()).padStart(2, '0'));
   const [expandedAlert, setExpandedAlert] = useState(null);
+  // APRS source filter: 'all' | 'internet' | 'rf'
+  const [aprsSource, setAprsSource] = useState('all');
   const mapInstanceRef = useRef(null);
   const overlayLayersRef = useRef([]);
 
@@ -97,7 +155,14 @@ export default function EmcommLayout(props) {
   }, []);
 
   const { alerts = [], shelters = [], disasters = [], loading } = emcommData || {};
-  const aprsStations = aprsData?.stations || [];
+  const allAprsStations = aprsData?.stations || [];
+
+  // Apply APRS source filter
+  const aprsStations = useMemo(() => {
+    if (aprsSource === 'rf') return allAprsStations.filter((s) => s.source === 'local-tnc');
+    if (aprsSource === 'internet') return allAprsStations.filter((s) => s.source !== 'local-tnc');
+    return allAprsStations;
+  }, [allAprsStations, aprsSource]);
 
   // Filter APRS stations to emergency symbols
   const emcommStations = useMemo(() => {
@@ -237,8 +302,11 @@ export default function EmcommLayout(props) {
         fillOpacity: 0.5,
         weight: 2,
       });
-      let popupHtml = `<b style="color:#22d3ee">${esc(station.ssid || station.call)}</b>`;
-      popupHtml += `<br><span style="color:#888">${esc(SYMBOL_LABELS[station.symbol] || 'EmComm')}</span>`;
+      const stationIcon = getStationIcon(station.symbol);
+      const stationType = getStationType(station.symbol);
+      const sourceTag = station.source === 'local-tnc' ? ' <span style="color:#22c55e;font-size:10px">RF</span>' : '';
+      let popupHtml = `<b style="color:#22d3ee">${stationIcon} ${esc(station.ssid || station.call)}</b>${sourceTag}`;
+      popupHtml += `<br><span style="color:#888">${esc(SYMBOL_LABELS[station.symbol] || 'EmComm')} (${stationType})</span>`;
       if (station.tokens && station.tokens.length > 0) {
         popupHtml += '<br><div style="margin-top:4px">';
         station.tokens.forEach((t) => {
@@ -550,7 +618,30 @@ export default function EmcommLayout(props) {
           </PanelSection>
 
           {/* EmComm Stations Panel (APRS) */}
-          <PanelSection title="EmComm Stations" count={emcommStationsWithDistance.length} color="#22d3ee">
+          <PanelSection
+            title="EmComm Stations"
+            count={emcommStationsWithDistance.length}
+            color="#22d3ee"
+            extra={
+              <select
+                value={aprsSource}
+                onChange={(e) => setAprsSource(e.target.value)}
+                style={{
+                  background: '#1a1f2e',
+                  border: '1px solid #2a3040',
+                  borderRadius: '3px',
+                  color: '#888',
+                  fontSize: '9px',
+                  padding: '1px 4px',
+                  marginLeft: '6px',
+                }}
+              >
+                <option value="all">All Sources</option>
+                <option value="rf">RF Only</option>
+                <option value="internet">Internet Only</option>
+              </select>
+            }
+          >
             {emcommStationsWithDistance.length === 0 ? (
               <EmptyState text="No emergency APRS stations heard" />
             ) : (
@@ -571,10 +662,16 @@ export default function EmcommLayout(props) {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
+                        <span style={{ marginRight: '4px' }}>{getStationIcon(s.symbol)}</span>
                         <span style={{ color: '#22d3ee', fontWeight: 600 }}>{s.ssid || s.call}</span>
                         <span style={{ color: '#888', marginLeft: '6px', fontSize: '10px' }}>
                           {SYMBOL_LABELS[s.symbol] || 'EmComm'}
                         </span>
+                        {s.source === 'local-tnc' && (
+                          <span style={{ color: '#22c55e', marginLeft: '4px', fontSize: '9px', fontWeight: 700 }}>
+                            RF
+                          </span>
+                        )}
                       </div>
                       <div style={{ color: '#888', fontSize: '10px', textAlign: 'right' }}>
                         {s.distance != null && (
@@ -743,7 +840,7 @@ function ResourceSummary({ stations }) {
 }
 
 /** Collapsible panel section wrapper */
-function PanelSection({ title, count, color, children }) {
+function PanelSection({ title, count, color, extra, children }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div style={{ background: '#0d0d0d', borderRadius: '6px', overflow: 'hidden' }}>
@@ -771,6 +868,7 @@ function PanelSection({ title, count, color, children }) {
           >
             {title}
           </span>
+          {extra && <span onClick={(e) => e.stopPropagation()}>{extra}</span>}
         </div>
         {count > 0 && (
           <span
