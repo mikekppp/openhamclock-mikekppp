@@ -73,6 +73,7 @@ export const SettingsPanel = ({
   const [tuneEnabled, setTuneEnabled] = useState(config?.rigControl?.tuneEnabled || false);
   const [autoMode, setAutoMode] = useState(config?.rigControl?.autoMode !== false);
   const [rigApiToken, setRigApiToken] = useState(config?.rigControl?.apiToken || '');
+  const [cloudRelaySession, setCloudRelaySession] = useState(config?.rigControl?.cloudRelaySession || '');
   const [showRigToken, setShowRigToken] = useState(false);
   const [wsjtxRelayStatus, setWsjtxRelayStatus] = useState(null); // null | 'pushing' | 'ok' | 'error'
   const [wsjtxRelayMsg, setWsjtxRelayMsg] = useState('');
@@ -440,6 +441,7 @@ export const SettingsPanel = ({
         tuneEnabled,
         autoMode,
         apiToken: rigApiToken.trim(),
+        cloudRelaySession: cloudRelaySession.trim(),
       },
     });
   };
@@ -4836,8 +4838,9 @@ export const SettingsPanel = ({
                           body: JSON.stringify(credData.configPayload),
                         });
                         if (pushRes.ok) {
+                          setCloudRelaySession(credData.session);
                           alert(
-                            `Cloud Relay configured!\n\nSession: ${credData.session}\nServer: ${credData.serverUrl}\n\nRestart rig-bridge to activate.`,
+                            `Cloud Relay configured!\n\nSession: ${credData.session}\nServer: ${credData.serverUrl}\n\nRestart rig-bridge to activate, then click Save below.`,
                           );
                         } else {
                           const err = await pushRes.text();
