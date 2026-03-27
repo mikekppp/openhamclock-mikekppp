@@ -1372,7 +1372,7 @@ export const WorldMap = ({
                 `<span style="color:${mapDefaults.color};background:#000">
                     ${mapDefaults.shape} ${mapDefaults.name} - </span>
                   <b data-qrz-call="${esc(spot.call)}" style="color:${mapDefaults.color}; cursor:pointer">${esc(spot.call)}</b><br/>
-                  ${grid ? `${grid}<br/>` : ''}
+                  ${grid ? `${esc(grid)}<br/>` : ''}
                   <span style="color:#888">${esc(spot.ref)}</span> ${esc(spot.locationDesc || '')}<br/>
                   ${spot.name ? `<i>${esc(spot.name)}</i><br/>` : ''}${esc(spot.freq)} ${esc(spot.mode || '')} <span style="color:#888">${esc(spot.time || '')}</span>
                   ${spot.comments?.length > 0 ? `<br/><i>(${esc(spot.comments)})</i>` : ''}`,
