@@ -1822,9 +1822,7 @@ export const WorldMap = ({
               )
               .addTo(map);
 
-            if (onSpotClick) {
-              marker.on('click', () => onSpotClick({ call: station.call, lat, lon }));
-            }
+            // APRS clicks open the popup only — intentionally do not set DX location
 
             aprsMarkersRef.current.push(marker);
           });
