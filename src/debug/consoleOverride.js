@@ -12,6 +12,8 @@ const METHOD_LEVEL = {
   warn: 2,
   info: 3,
   log: 4,
+  debug: 4,
+  trace: 4,
 };
 
 export function overrideConsole(config) {
@@ -22,6 +24,8 @@ export function overrideConsole(config) {
     warn: console.warn.bind(console),
     info: console.info.bind(console),
     log: console.log.bind(console),
+    debug: console.debug ? console.debug.bind(console) : console.log.bind(console),
+    trace: console.trace ? console.trace.bind(console) : console.log.bind(console),
   };
 
   Object.keys(METHOD_LEVEL).forEach((method) => {
