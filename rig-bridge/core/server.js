@@ -517,7 +517,7 @@ function buildSetupHtml(version, firstRunToken = null) {
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('radio', this)">📻 Radio</button>
       <button class="tab-btn" onclick="switchTab('plugins', this)">🧩 Plugins</button>
-      <button class="tab-btn" onclick="switchTab('integrations', this)">🔌 WSJT-X</button>
+      <button class="tab-btn" onclick="switchTab('integrations', this)">🔌 WSJT-X <span style="font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#06b6d4;border:1px solid #06b6d4;border-radius:3px;padding:1px 4px;line-height:1.4;opacity:0.85;margin-left:4px;vertical-align:middle;">Beta</span></button>
       <button class="tab-btn" onclick="switchTab('log', this)">🖥️ Log</button>
       <button class="tab-btn" onclick="switchTab('security', this); loadTlsStatus();">🔒 Security</button>
     </div>
@@ -953,19 +953,19 @@ function buildSetupHtml(version, firstRunToken = null) {
     // ── Plugin Manager ────────────────────────────────────────────────────
 
     const PLUGIN_DEFS = [
-      { key: 'mshv', name: 'MSHV', desc: 'Multi-stream digital mode software (MSK144, Q65, etc.)', fields: [
+      { key: 'mshv', name: 'MSHV', maturity: 'alpha', desc: 'Multi-stream digital mode software (MSK144, Q65, etc.)', fields: [
         { id: 'udpPort', label: 'UDP Port', type: 'number', default: 2239 },
         { id: 'verbose', label: 'Verbose logging', type: 'checkbox', default: false },
       ]},
-      { key: 'jtdx', name: 'JTDX', desc: 'Enhanced JT65/JT9/FT8 decoding (WSJT-X fork)', fields: [
+      { key: 'jtdx', name: 'JTDX', maturity: 'alpha', desc: 'Enhanced JT65/JT9/FT8 decoding (WSJT-X fork)', fields: [
         { id: 'udpPort', label: 'UDP Port', type: 'number', default: 2238 },
         { id: 'verbose', label: 'Verbose logging', type: 'checkbox', default: false },
       ]},
-      { key: 'js8call', name: 'JS8Call', desc: 'JS8 messaging protocol for keyboard-to-keyboard QSOs', fields: [
+      { key: 'js8call', name: 'JS8Call', maturity: 'alpha', desc: 'JS8 messaging protocol for keyboard-to-keyboard QSOs', fields: [
         { id: 'udpPort', label: 'UDP Port', type: 'number', default: 2242 },
         { id: 'verbose', label: 'Verbose logging', type: 'checkbox', default: false },
       ]},
-      { key: 'aprs', name: 'APRS TNC', desc: 'Local APRS via Direwolf or hardware TNC (KISS protocol)', fields: [
+      { key: 'aprs', name: 'APRS TNC', maturity: 'beta', desc: 'Local APRS via Direwolf or hardware TNC (KISS protocol)', fields: [
         { id: 'protocol', label: 'Protocol', type: 'select', options: ['kiss-tcp', 'kiss-serial'], default: 'kiss-tcp' },
         { id: 'host', label: 'TNC Host', type: 'text', default: '127.0.0.1' },
         { id: 'port', label: 'TNC Port', type: 'number', default: 8001 },
@@ -974,18 +974,18 @@ function buildSetupHtml(version, firstRunToken = null) {
         { id: 'beaconInterval', label: 'Beacon Interval (sec)', type: 'number', default: 600 },
         { id: 'verbose', label: 'Verbose logging', type: 'checkbox', default: false },
       ]},
-      { key: 'rotator', name: 'Rotator (rotctld)', desc: 'Antenna rotator control via Hamlib rotctld', fields: [
+      { key: 'rotator', name: 'Rotator (rotctld)', maturity: 'alpha', desc: 'Antenna rotator control via Hamlib rotctld', fields: [
         { id: 'host', label: 'rotctld Host', type: 'text', default: '127.0.0.1' },
         { id: 'port', label: 'rotctld Port', type: 'number', default: 4533 },
         { id: 'pollInterval', label: 'Poll Interval (ms)', type: 'number', default: 1000 },
       ]},
-      { key: 'winlink', name: 'Winlink', desc: 'Gateway discovery + Pat client for Winlink messaging', fields: [
+      { key: 'winlink', name: 'Winlink', maturity: 'alpha', desc: 'Gateway discovery + Pat client for Winlink messaging', fields: [
         { id: 'apiKey', label: 'Winlink API Key', type: 'text', default: '' },
         { id: 'pat.enabled', label: 'Enable Pat Client', type: 'checkbox', default: false },
         { id: 'pat.host', label: 'Pat Host', type: 'text', default: '127.0.0.1' },
         { id: 'pat.port', label: 'Pat Port', type: 'number', default: 8080 },
       ]},
-      { key: 'cloudRelay', name: 'Cloud Relay', desc: 'Proxy rig features to cloud-hosted OpenHamClock', fields: [
+      { key: 'cloudRelay', name: 'Cloud Relay', maturity: 'alpha', desc: 'Proxy rig features to cloud-hosted OpenHamClock', fields: [
         { id: 'url', label: 'OHC Server URL', type: 'text', default: '' },
         { id: 'apiKey', label: 'Relay API Key', type: 'text', default: '' },
         { id: 'session', label: 'Session ID', type: 'text', default: '' },
@@ -993,6 +993,16 @@ function buildSetupHtml(version, firstRunToken = null) {
         { id: 'pollInterval', label: 'Poll Interval (ms)', type: 'number', default: 1000 },
       ]},
     ];
+
+    function maturityBadge(level) {
+      if (!level) return '';
+      const color = level === 'alpha' ? '#f59e0b' : '#06b6d4';
+      const label = level === 'alpha' ? 'Alpha' : 'Beta';
+      return '<span style="font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;' +
+             'color:' + color + ';border:1px solid ' + color + ';border-radius:3px;' +
+             'padding:1px 4px;line-height:1.4;opacity:0.85;margin-left:6px;vertical-align:middle;">' +
+             label + '</span>';
+    }
 
     function renderPlugins(cfg) {
       const container = document.getElementById('pluginList');
@@ -1007,7 +1017,7 @@ function buildSetupHtml(version, firstRunToken = null) {
         card.innerHTML =
           '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">' +
             '<div>' +
-              '<strong style="color:#c4c9d4; font-size:13px;">' + plugin.name + '</strong>' +
+              '<strong style="color:#c4c9d4; font-size:13px;">' + plugin.name + maturityBadge(plugin.maturity) + '</strong>' +
               '<div style="font-size:11px; color:#6b7280; margin-top:2px;">' + plugin.desc + '</div>' +
             '</div>' +
             '<label style="position:relative; display:inline-block; width:44px; height:24px; margin:0;">' +
