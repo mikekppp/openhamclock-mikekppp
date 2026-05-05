@@ -38,7 +38,7 @@ module.exports = function (app, ctx) {
 
     // POST remote address, lockout if repeat activity within remoteAddress_lockout_period
     const remoteAddress_lockout_period = 1 * 60 * 1000; // 1 minute
-    const remoteAddress = req.socket.remoteAddress || {};
+    const remoteAddress = req.ip || {};
     let remoteAddressLockout = remoteAddresses.has(remoteAddress)
       ? Date.now() < remoteAddresses.get(remoteAddress).createTime + remoteAddress_lockout_period
       : false;
