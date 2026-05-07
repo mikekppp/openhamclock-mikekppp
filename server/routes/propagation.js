@@ -16,6 +16,7 @@ module.exports = function (app, ctx) {
     upstream,
     maidenheadToLatLon,
     n0nbhCache,
+    maintainCache,
   } = ctx;
 
   const {
@@ -46,22 +47,22 @@ module.exports = function (app, ctx) {
 
   // Multi-entry LRU cache for ITURHFProp results — different DE/DX paths
   // don't evict each other. Keyed by rounded coordinates + solar params.
-  const iturhfpropSingleCache = new Map(); // key → { data, ts }
-  const iturhfpropHourlyMap = new Map(); // key → { data, ts }
+  const iturhfpropSingleCache = new Map(); // key → { data, timestamp }
+  const iturhfpropHourlyMap = new Map(); // key → { data, timestamp }
   const ITUCACHE_TTL = 30 * 60 * 1000; // 30 min — predictions don't change fast
   const ITUCACHE_MAX = 200; // max entries per cache
 
   function ituCacheGet(cache, key) {
     const entry = cache.get(key);
     if (!entry) return null;
-    if (Date.now() - entry.ts > ITUCACHE_TTL) {
+    if (Date.now() - entry.timestamp > ITUCACHE_TTL) {
       cache.delete(key);
       return null;
     }
     return entry.data;
   }
   function ituCacheSet(cache, key, data) {
-    cache.set(key, { data, ts: Date.now() });
+    cache.set(key, { data, timestamp: Date.now() });
     // LRU eviction
     if (cache.size > ITUCACHE_MAX) {
       const oldest = cache.keys().next().value;
@@ -552,12 +553,12 @@ module.exports = function (app, ctx) {
 
   // Solar data cache — shared across all heatmap requests so band/mode/power
   // changes don't each trigger a slow NOAA fetch
-  let solarCache = { sfi: 150, ssn: 100, kIndex: 2, ts: 0 };
+  let solarCache = { sfi: 150, ssn: 100, kIndex: 2, timestamp: 0 };
   const SOLAR_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
   async function getSolarData() {
     const now = Date.now();
-    if (now - solarCache.ts < SOLAR_CACHE_TTL) {
+    if (now - solarCache.timestamp < SOLAR_CACHE_TTL) {
       return { sfi: solarCache.sfi, ssn: solarCache.ssn, kIndex: solarCache.kIndex };
     }
     let sfi = 150,
@@ -593,7 +594,7 @@ module.exports = function (app, ctx) {
     } catch (e) {
       logDebug('[PropHeatmap] Using cached/default solar values');
     }
-    solarCache = { sfi, ssn, kIndex, ts: now };
+    solarCache = { sfi, ssn, kIndex, timestamp: now };
     return { sfi, ssn, kIndex };
   }
 
@@ -601,33 +602,10 @@ module.exports = function (app, ctx) {
   const PROP_HEATMAP_TTL = 15 * 60 * 1000; // 15 minutes — propagation changes slowly
   const PROP_HEATMAP_MAX_ENTRIES = 200; // Hard cap on cache entries
 
-  // Periodic cleanup: purge expired heatmap cache entries every 10 minutes
+  // Periodic cleanup: purge expired cache entries every 10 minutes
   setInterval(
     () => {
-      const now = Date.now();
-      const keys = Object.keys(PROP_HEATMAP_CACHE);
-      let purged = 0;
-      for (const key of keys) {
-        if (now - PROP_HEATMAP_CACHE[key].ts > PROP_HEATMAP_TTL * 2) {
-          delete PROP_HEATMAP_CACHE[key];
-          purged++;
-        }
-      }
-      // If still over cap, evict oldest
-      const remaining = Object.keys(PROP_HEATMAP_CACHE);
-      if (remaining.length > PROP_HEATMAP_MAX_ENTRIES) {
-        remaining
-          .sort((a, b) => PROP_HEATMAP_CACHE[a].ts - PROP_HEATMAP_CACHE[b].ts)
-          .slice(0, remaining.length - PROP_HEATMAP_MAX_ENTRIES)
-          .forEach((key) => {
-            delete PROP_HEATMAP_CACHE[key];
-            purged++;
-          });
-      }
-      if (purged > 0)
-        console.log(
-          `[Cache] PropHeatmap: purged ${purged} stale entries, ${Object.keys(PROP_HEATMAP_CACHE).length} remaining`,
-        );
+      maintainCache(PROP_HEATMAP_CACHE, PROP_HEATMAP_TTL, PROP_HEATMAP_MAX_ENTRIES, 'Prop Heatmap cache');
     },
     10 * 60 * 1000,
   );
@@ -648,7 +626,7 @@ module.exports = function (app, ctx) {
     const cacheKey = `${deLat.toFixed(0)}:${deLon.toFixed(0)}:${freq}:${gridSize}:${txMode}:${txPower}:${antennaKey}`;
     const now = Date.now();
 
-    if (PROP_HEATMAP_CACHE[cacheKey] && now - PROP_HEATMAP_CACHE[cacheKey].ts < PROP_HEATMAP_TTL) {
+    if (PROP_HEATMAP_CACHE[cacheKey] && now - PROP_HEATMAP_CACHE[cacheKey].timestamp < PROP_HEATMAP_TTL) {
       return res.json(PROP_HEATMAP_CACHE[cacheKey].data);
     }
 
@@ -718,7 +696,7 @@ module.exports = function (app, ctx) {
         timestamp: new Date().toISOString(),
       };
 
-      PROP_HEATMAP_CACHE[cacheKey] = { data: result, ts: now };
+      PROP_HEATMAP_CACHE[cacheKey] = { data: result, timestamp: now };
 
       logDebug(
         `[PropHeatmap] Computed ${cells.length} cells for ${freq} MHz [${txMode} @ ${txPower}W] from ${deLat.toFixed(1)},${deLon.toFixed(1)}`,
@@ -734,8 +712,18 @@ module.exports = function (app, ctx) {
   // Computes MUF from DE to each grid cell using solar indices + path geometry.
   // Unlike the old ionosonde-based MUF map, this shows path-specific MUF from
   // your QTH to every point on the globe — more useful for operators.
+
   const MUF_MAP_CACHE = {};
   const MUF_MAP_TTL = 5 * 60 * 1000;
+  const MUF_MAP_MAX_ENTRIES = 200; // Hard cap on cache entries
+
+  // Periodic cleanup: purge expired cache entries every 10 minutes
+  setInterval(
+    () => {
+      maintainCache(MUF_MAP_CACHE, MUF_MAP_TTL, MUF_MAP_MAX_ENTRIES, 'MUF map cache');
+    },
+    10 * 60 * 1000,
+  );
 
   app.get('/api/propagation/mufmap', async (req, res) => {
     const deLat = parseFloat(req.query.deLat) || 0;
@@ -745,7 +733,7 @@ module.exports = function (app, ctx) {
     const cacheKey = `muf-${deLat.toFixed(0)}:${deLon.toFixed(0)}:${gridSize}`;
     const now = Date.now();
 
-    if (MUF_MAP_CACHE[cacheKey] && now - MUF_MAP_CACHE[cacheKey].ts < MUF_MAP_TTL) {
+    if (MUF_MAP_CACHE[cacheKey] && now - MUF_MAP_CACHE[cacheKey].timestamp < MUF_MAP_TTL) {
       return res.json(MUF_MAP_CACHE[cacheKey].data);
     }
 
@@ -799,7 +787,7 @@ module.exports = function (app, ctx) {
         timestamp: new Date().toISOString(),
       };
 
-      MUF_MAP_CACHE[cacheKey] = { data: result, ts: now };
+      MUF_MAP_CACHE[cacheKey] = { data: result, timestamp: now };
       logDebug(`[MUFMap] Computed ${cells.length} cells from ${deLat.toFixed(1)},${deLon.toFixed(1)}`);
       res.json(result);
     } catch (error) {

@@ -2,7 +2,7 @@
  * PropagationPanel Component (VOACAP)
  * Toggleable between heatmap chart, bar chart, and band conditions view
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDistance } from '../utils/geo.js';
 import { saveConfig, loadConfig } from '../utils/config.js';
@@ -124,6 +124,18 @@ export const PropagationPanel = ({
   // Auto-rotate through views on a timer
   const rotate = useAutoRotate('propPanel', { onTick: cycleViewMode, itemCount: modes.length });
 
+  // Empty/invalid `timeZone` (e.g. fresh installs default to '') would make
+  // toLocaleString throw RangeError on every render — fall back to browser TZ.
+  const safeTimeZone = useMemo(() => {
+    if (!timeZone) return undefined;
+    try {
+      new Intl.DateTimeFormat(undefined, { timeZone });
+      return timeZone;
+    } catch {
+      return undefined;
+    }
+  }, [timeZone]);
+
   const getBandStyle = (condition) =>
     ({
       GOOD: { bg: 'rgba(0,255,136,0.2)', color: '#00ff88', border: 'rgba(0,255,136,0.4)' },
@@ -145,15 +157,9 @@ export const PropagationPanel = ({
   const { solarData, distance, currentBands, hourlyPredictions, muf, luf, dataSource } = propagation;
   const currentHour = propagation.currentHour ?? new Date().getUTCHours();
   const currentLocalMin = function () {
-    let [hr, mn] = currentTime
-      .toLocaleString('en-US', {
-        timeZone: timeZone,
-        hour12: false,
-        hour: 'numeric',
-        minute: 'numeric',
-      })
-      .split(':')
-      .map(Number);
+    const opts = { hour12: false, hour: 'numeric', minute: 'numeric' };
+    if (safeTimeZone) opts.timeZone = safeTimeZone;
+    let [hr, mn] = currentTime.toLocaleString('en-US', opts).split(':').map(Number);
     return (hr % 24) * 60 + mn;
   };
   const isDaytime =

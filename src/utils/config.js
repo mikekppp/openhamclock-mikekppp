@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG = {
   theme: 'dark', // 'dark', 'light', 'legacy', or 'retro'
   layout: 'modern', // 'modern' or 'classic'
   mouseZoom: 50, // Factor to affect rate of zooming with scrollwheel (1-100)
-  timezone: '', // IANA timezone (e.g. 'America/Regina') — empty = browser default
+  timezone: '', // IANA timezone (e.g. 'America/Regina') — empty means consumers must fall back to browser default themselves; passing '' to Intl.DateTimeFormat throws RangeError
   use12Hour: true,
   swapHeaderClocks: false, // false = UTC first, true = Local first
   showMutualReception: true, // Show gold star on PSK spots with mutual reception
@@ -85,7 +85,7 @@ export const fetchServerConfig = async () => {
       serverConfig = await response.json();
       // Only log if server has real config (not defaults)
       if (serverConfig.callsign && serverConfig.callsign !== 'N0CALL') {
-        console.log('[Config] Server config:', serverConfig.callsign, '@', serverConfig.locator);
+        console.info('[Config] Server config:', serverConfig.callsign, '@', serverConfig.locator);
       }
       return serverConfig;
     }
@@ -142,7 +142,7 @@ export const loadConfig = () => {
     const saved = localStorage.getItem('openhamclock_config');
     if (saved) {
       localConfig = JSON.parse(saved);
-      console.log('[Config] Loaded from localStorage:', localConfig.callsign);
+      console.debug('[Config] Loaded from localStorage:', localConfig.callsign);
     }
   } catch (e) {
     console.error('Error loading config from localStorage:', e);
@@ -179,7 +179,7 @@ export const loadConfig = () => {
 export const saveConfig = (config) => {
   try {
     localStorage.setItem('openhamclock_config', JSON.stringify(config));
-    console.log('[Config] Saved to localStorage');
+    console.debug('[Config] Saved to localStorage');
     // Notify plugins of config change (storage events don't fire in the same tab)
     window.dispatchEvent(new CustomEvent('openhamclock-config-change', { detail: config }));
   } catch (e) {
@@ -249,7 +249,7 @@ export const fetchServerSettings = async () => {
     }
 
     if (applied > 0) {
-      console.log(`[Config] Synced ${applied} settings from server`);
+      console.debug(`[Config] Synced ${applied} settings from server`);
     }
     return applied > 0;
   } catch (e) {
@@ -293,7 +293,7 @@ export const syncAllSettingsToServer = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log(`[Config] Synced ${result.keys} settings to server`);
+        console.debug(`[Config] Synced ${result.keys} settings to server`);
       }
     } catch (e) {
       // Silent fail — server sync is best-effort
