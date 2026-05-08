@@ -137,43 +137,6 @@ const latLonToMaidenhead = ({ lat, lon }, precision = 6) => {
 };
 
 /**
- * Convert Maidenhead grid locator to lat/lon.
- * Supports 4-char and 6-char grids. Case-insensitive.
- * @param {string} grid - Grid locator (e.g., 'DM79' or 'DM79lv')
- * @returns {{ lat: number, lon: number } | null}
- */
-function gridToLatLon(grid) {
-  if (!grid) return null;
-  const g = String(grid).trim().toUpperCase();
-  if (g.length < 4) return null;
-
-  const A = 'A'.charCodeAt(0);
-
-  const lonField = g.charCodeAt(0) - A;
-  const latField = g.charCodeAt(1) - A;
-  const lonSquare = parseInt(g[2], 10);
-  const latSquare = parseInt(g[3], 10);
-  if (!Number.isFinite(lonSquare) || !Number.isFinite(latSquare)) return null;
-
-  let lon = -180 + lonField * 20 + lonSquare * 2;
-  let lat = -90 + latField * 10 + latSquare * 1;
-
-  if (g.length >= 6) {
-    const lonSub = g.charCodeAt(4) - A;
-    const latSub = g.charCodeAt(5) - A;
-    lon += lonSub * (2 / 24);
-    lat += latSub * (1 / 24);
-    lon += 1 / 24;
-    lat += 0.5 / 24;
-  } else {
-    lon += 1.0;
-    lat += 0.5;
-  }
-
-  return { lat, lon };
-}
-
-/**
  * Convert lat/lon to Maidenhead grid locator (6-character).
  */
 function latLonToGrid(lat, lon) {
@@ -241,7 +204,6 @@ module.exports = {
   maidenheadToLatLon,
   latLonToMaidenhead,
   maidenheadToBoundingBox,
-  gridToLatLon,
   latLonToGrid,
   getBandFromHz,
   getBandFromKHz,

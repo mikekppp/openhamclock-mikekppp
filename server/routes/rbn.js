@@ -4,14 +4,7 @@
  */
 
 const net = require('net');
-const {
-  maidenheadToLatLon,
-  gridToLatLon,
-  latLonToGrid,
-  getBandFromHz,
-  getBandFromKHz,
-  haversineDistance,
-} = require('../utils/grid');
+const { maidenheadToLatLon, latLonToGrid, getBandFromHz, getBandFromKHz, haversineDistance } = require('../utils/grid');
 
 module.exports = function (app, ctx) {
   const {
@@ -860,8 +853,8 @@ module.exports = function (app, ctx) {
 
             if (band !== 'all' && spotBand !== band) continue;
 
-            const senderLoc = gridToLatLon(senderLocator);
-            const receiverLoc = gridToLatLon(receiverLocator);
+            const senderLoc = maidenheadToLatLon(senderLocator);
+            const receiverLoc = maidenheadToLatLon(receiverLocator);
 
             if (senderLoc && receiverLoc) {
               const powerWatts = power ? parseFloat(power) : null;
