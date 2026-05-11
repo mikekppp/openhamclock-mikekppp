@@ -10,7 +10,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getBandColor } from '../utils/callsign.js';
-import { IconSearch, IconRefresh, IconMap } from './Icons.jsx';
+import { IconSearch, IconRefresh, IconMap, IconTrash } from './Icons.jsx';
 import CallsignLink from './CallsignLink.jsx';
 
 const PSKReporterPanel = ({
@@ -94,9 +94,12 @@ const PSKReporterPanel = ({
     connected = false,
     source = '',
     refresh = () => {},
+    clear = () => {},
     filterMode = 'call',
     identifier = '',
   } = pskReporter;
+
+  const hasAnySpots = txCount > 0 || rxCount > 0;
 
   // ── PSK filtering ──
   const filterReports = (reports) => {
@@ -321,6 +324,18 @@ const PSKReporterPanel = ({
               >
                 <IconSearch size={11} style={{ verticalAlign: 'middle' }} />
                 {pskFilterCount > 0 ? pskFilterCount : ''}
+              </button>
+              <button
+                onClick={clear}
+                disabled={!hasAnySpots}
+                style={{
+                  ...iconBtn(false),
+                  opacity: hasAnySpots ? 1 : 0.4,
+                  cursor: hasAnySpots ? 'pointer' : 'not-allowed',
+                }}
+                title={t('pskReporterPanel.psk.clearTooltip')}
+              >
+                <IconTrash size={11} style={{ verticalAlign: 'middle' }} />
               </button>
               <button
                 onClick={refresh}

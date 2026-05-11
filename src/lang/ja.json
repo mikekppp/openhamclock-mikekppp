@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "マップ上にスポットを表示",
   "pskReporterPanel.mode.pskTooltip": "PSKReporter.infoによるインターネット受信レポート",
   "pskReporterPanel.mode.wsjtxTooltip": "UDPリレーによるローカルWSJT-Xデコード",
+  "pskReporterPanel.psk.clearTooltip": "マップからすべてのスポットを消去",
   "pskReporterPanel.psk.connecting": "接続中…",
   "pskReporterPanel.psk.connectionFailed": "接続失敗 — 更新をタップ",
   "pskReporterPanel.psk.filterTooltip": "バンド、モード、グリッドでスポットをフィルタ",

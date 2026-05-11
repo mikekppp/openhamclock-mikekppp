@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "지도에 스팟 표시",
   "pskReporterPanel.mode.pskTooltip": "PSKReporter.info를 통한 인터넷 기반 수신 보고",
   "pskReporterPanel.mode.wsjtxTooltip": "UDP 릴레이를 통한 로컬 WSJT-X 디코드",
+  "pskReporterPanel.psk.clearTooltip": "지도에서 모든 스팟 지우기",
   "pskReporterPanel.psk.connecting": "연결 중…",
   "pskReporterPanel.psk.connectionFailed": "연결 실패 – 새로고침을 탭하세요",
   "pskReporterPanel.psk.filterTooltip": "밴드, 모드 또는 그리드로 스팟 필터",

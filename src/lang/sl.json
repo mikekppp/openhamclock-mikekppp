@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "Prikaži spote na zemljevidu",
   "pskReporterPanel.mode.pskTooltip": "Internetna poro?ila o sprejemu prek PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "Lokalni WSJT-X dekodi prek UDP relaya",
+  "pskReporterPanel.psk.clearTooltip": "Počisti vse točke z zemljevida",
   "pskReporterPanel.psk.connecting": "Povezovanje...",
   "pskReporterPanel.psk.connectionFailed": "Povezava ni uspela – osveži",
   "pskReporterPanel.psk.filterTooltip": "Filtriraj spote po pasu, na?inu ali mre?i",

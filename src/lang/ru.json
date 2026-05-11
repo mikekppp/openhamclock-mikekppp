@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "Показать споты на карте",
   "pskReporterPanel.mode.pskTooltip": "Интернет-отчёты о приёме через PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "Локальные декодирования WSJT-X через UDP-ретранслятор",
+  "pskReporterPanel.psk.clearTooltip": "Очистить все споты с карты",
   "pskReporterPanel.psk.connecting": "Подключение...",
   "pskReporterPanel.psk.connectionFailed": "Ошибка подключения — нажмите обновить ?",
   "pskReporterPanel.psk.filterTooltip": "Фильтр спотов по диапазону, виду или локатору",

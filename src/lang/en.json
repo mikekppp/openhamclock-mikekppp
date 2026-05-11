@@ -308,6 +308,7 @@
   "pskReporterPanel.map.show": "Show spots on map",
   "pskReporterPanel.mode.pskTooltip": "Internet-based reception reports via PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "Local WSJT-X decodes via UDP relay",
+  "pskReporterPanel.psk.clearTooltip": "Clear all spots from map",
   "pskReporterPanel.psk.connecting": "Connecting...",
   "pskReporterPanel.psk.connectionFailed": "Connection failed ? tap refresh ?",
   "pskReporterPanel.psk.filterTooltip": "Filter spots by band, mode, or grid",

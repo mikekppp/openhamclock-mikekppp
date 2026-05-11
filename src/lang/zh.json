@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "地图显示监测点",
   "pskReporterPanel.mode.pskTooltip": "通过 PSKReporter.info 获取的网络接收报告",
   "pskReporterPanel.mode.wsjtxTooltip": "通过 UDP 中继的本地 WSJT-X 解码",
+  "pskReporterPanel.psk.clearTooltip": "清除地图上的所有点",
   "pskReporterPanel.psk.connecting": "正在连接...",
   "pskReporterPanel.psk.connectionFailed": "连接失败，请点击刷新",
   "pskReporterPanel.psk.filterTooltip": "按频段、模式或网格筛选",

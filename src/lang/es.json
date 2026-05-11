@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "Mostrar spots en el mapa",
   "pskReporterPanel.mode.pskTooltip": "Informes de recepción por Internet vía PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "Decodificaciones WSJT-X locales vía relé UDP",
+  "pskReporterPanel.psk.clearTooltip": "Borrar todos los spots del mapa",
   "pskReporterPanel.psk.connecting": "Conectando...",
   "pskReporterPanel.psk.connectionFailed": "Conexión fallida ¿ toca refrescar ?",
   "pskReporterPanel.psk.filterTooltip": "Filtrar spots por banda, modo o cuadrícula",

@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "სპოტების ჩვენება რუკაზე",
   "pskReporterPanel.mode.pskTooltip": "ინტერნეტ-ანგარიშები მიღებაზე PSKReporter.info-ით",
   "pskReporterPanel.mode.wsjtxTooltip": "ადგილობრივი WSJT-X დეკოდირებები UDP რეტრანსლატორით",
+  "pskReporterPanel.psk.clearTooltip": "ყველა სპოტის წაშლა რუკიდან",
   "pskReporterPanel.psk.connecting": "დაკავშირება...",
   "pskReporterPanel.psk.connectionFailed": "კავშირის შეცდომა — დააწკაპუნეთ განახლებაზე ?",
   "pskReporterPanel.psk.filterTooltip": "სპოტების ფილტრი დიაპაზონით, მოდით ან ლოკატორით",

@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "Spots op de kaart tonen",
   "pskReporterPanel.mode.pskTooltip": "Internet-ontvangstrapporten via PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "Lokale WSJT-X-decodes via UDP-relay",
+  "pskReporterPanel.psk.clearTooltip": "Alle spots van de kaart wissen",
   "pskReporterPanel.psk.connecting": "Verbinden...",
   "pskReporterPanel.psk.connectionFailed": "Verbinding mislukt ? tik op verversen ?",
   "pskReporterPanel.psk.filterTooltip": "Spots filteren op band, mode of grid",

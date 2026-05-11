@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "แสดงจุดบนแผนที่",
   "pskReporterPanel.mode.pskTooltip": "รายงานการรับสัญญาณผ่านอินเทอร์เน็ตจาก PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "การถอดรหัส WSJT-X ภายในเครื่องผ่าน UDP รีเลย์",
+  "pskReporterPanel.psk.clearTooltip": "ล้างจุดทั้งหมดออกจากแผนที่",
   "pskReporterPanel.psk.connecting": "กำลังเชื่อมต่อ...",
   "pskReporterPanel.psk.connectionFailed": "การเชื่อมต่อล้มเหลว • แตะเพื่อรีเฟรช",
   "pskReporterPanel.psk.filterTooltip": "กรองจุดสังเกตตามย่านความถี่ หรือกริด",

@@ -304,6 +304,7 @@
   "pskReporterPanel.map.show": "Tunjuk spot pada peta",
   "pskReporterPanel.mode.pskTooltip": "Laporan penerimaan berasaskan internet melalui PSKReporter.info",
   "pskReporterPanel.mode.wsjtxTooltip": "Dekod WSJT-X tempatan melalui relay UDP",
+  "pskReporterPanel.psk.clearTooltip": "Padam semua spot dari peta",
   "pskReporterPanel.psk.connecting": "Menyambung…",
   "pskReporterPanel.psk.connectionFailed": "Sambungan gagal – tekan muat semula",
   "pskReporterPanel.psk.filterTooltip": "Tapis spot mengikut jalur, mod atau grid",
