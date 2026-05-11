@@ -18,6 +18,7 @@ import {
   SolarPanel,
   PropagationPanel,
   BandHealthPanel,
+  BandActivityHeatmap,
   RotatorPanel,
   DXpeditionPanel,
   PSKReporterPanel,
@@ -429,6 +430,7 @@ export const DockableApp = ({
       'propagation-bars': { name: 'VOACAP Bars', icon: '📊', group: 'Propagation' },
       'band-conditions': { name: 'Band Conditions', icon: '📶', group: 'Propagation' },
       'band-health': { name: 'Band Health', icon: '📶' },
+      'band-activity': { name: 'Band Activity', icon: '🔥' },
       ibp: { name: 'IBP Beacons', icon: '📡', group: 'Propagation' },
       'dx-cluster': { name: 'DX Cluster', icon: '📻' },
       'psk-reporter': { name: 'PSK Reporter', icon: '📡' },
@@ -845,6 +847,10 @@ export const DockableApp = ({
 
         case 'band-health':
           content = <BandHealthPanel dxSpots={dxClusterData.spots} clusterFilters={dxFilters} />;
+          break;
+
+        case 'band-activity':
+          content = <BandActivityHeatmap dxSpots={dxClusterData.spots} userCallsign={config.callsign} />;
           break;
 
         case 'dx-cluster':
