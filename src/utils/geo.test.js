@@ -26,13 +26,13 @@ describe('Maidenhead Grid tests', () => {
       actualLatLon: { lat: 0, lon: 0 },
     },
 
-    // location just west of antimeridian
+    // location at equator just west of antimeridian
     {
       grid: 'RJ90XA90',
       actualLatLon: { lat: 0, lon: 179.999 },
     },
 
-    // location on antimeridian
+    // location at equator on antimeridian
     // note that this is not strictly valid as longitude should be given as -180 rather than +180,
     // however some sources may expected +180 to be functional so it should be tested
     {
@@ -40,7 +40,7 @@ describe('Maidenhead Grid tests', () => {
       actualLatLon: { lat: 0, lon: 180.0 },
     },
 
-    // location on antimeridian
+    // location at equator on antimeridian
     {
       grid: 'AJ00AA00',
       actualLatLon: { lat: 0, lon: -180.0 },
