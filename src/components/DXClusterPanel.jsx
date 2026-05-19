@@ -2,7 +2,7 @@
  * DXClusterPanel Component
  * Displays DX cluster spots with filtering controls and ON/OFF toggle
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getBandColor } from '../utils/callsign.js';
 import { matchesDXSpotPath } from '../utils/dxClusterSpotMatcher';
@@ -42,6 +42,21 @@ export const DXClusterPanel = ({
       } catch {}
       return next;
     });
+  };
+
+  // Sort field (#998). Default 'time' preserves upstream order (newest first).
+  const [sortField, setSortField] = useState(() => {
+    try {
+      return localStorage.getItem('ohc_dx_sort') || 'time';
+    } catch {
+      return 'time';
+    }
+  });
+  const handleSortChange = (v) => {
+    setSortField(v);
+    try {
+      localStorage.setItem('ohc_dx_sort', v);
+    } catch {}
   };
 
   const parseSpotTimeToTimestamp = (spot) => {
@@ -103,7 +118,27 @@ export const DXClusterPanel = ({
   };
 
   const filterCount = getActiveFilterCount();
-  const spots = data || [];
+  const rawSpots = data || [];
+
+  // Helper: parse spot.freq → MHz number for sort comparison. Mirrors the
+  // display-side logic at the row level (kHz values >1000 get divided).
+  const freqToMHz = (spot) => {
+    if (!spot?.freq) return 0;
+    const v = parseFloat(spot.freq);
+    if (!Number.isFinite(v)) return 0;
+    return v > 1000 ? v / 1000 : v;
+  };
+
+  const spots = useMemo(() => {
+    if (sortField === 'time') return rawSpots;
+    const copy = [...rawSpots];
+    if (sortField === 'freq') {
+      copy.sort((a, b) => freqToMHz(a) - freqToMHz(b));
+    } else if (sortField === 'call') {
+      copy.sort((a, b) => (a.call || '').localeCompare(b.call || ''));
+    }
+    return copy;
+  }, [rawSpots, sortField]);
 
   return (
     <div
@@ -137,6 +172,26 @@ export const DXClusterPanel = ({
           <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
             {spots.length}/{totalSpots || spots.length}
           </span>
+          <select
+            value={sortField}
+            onChange={(e) => handleSortChange(e.target.value)}
+            title="Sort spots"
+            aria-label="Sort spots"
+            style={{
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '3px',
+              fontSize: '10px',
+              padding: '1px 4px',
+              cursor: 'pointer',
+              maxWidth: '70px',
+            }}
+          >
+            <option value="time">Time</option>
+            <option value="freq">Freq</option>
+            <option value="call">Call</option>
+          </select>
           <button
             onClick={onOpenFilters}
             title={t('dxClusterPanel.filterTooltip')}
