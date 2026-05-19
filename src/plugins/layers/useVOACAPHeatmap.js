@@ -395,14 +395,22 @@ export function useLayer({ map, enabled, opacity, locator }) {
     // seams and is significantly faster for hundreds of rectangles
     const renderer = L.canvas({ padding: 0.5 });
 
+    // The 3-world-copies trick is a Mercator wraparound aid — on the azimuthal
+    // equidistant projection (#990, reported by VK4LWH), longitude offsets of
+    // ±360° project to the same point, so the extra copies just overdraw the
+    // base copy and produce visual smears near the antipode where the
+    // projection's `k = c / sin(c)` factor blows up. Use a single copy on
+    // azimuthal; keep the 3-copy fan-out for Mercator.
+    const isAzimuthal = map.options?.crs?.code === 'AzimuthalEquidistant';
+    const offsets = isAzimuthal ? [0] : [-360, 0, 360];
+
     data.cells.forEach((cell) => {
       const { color, alpha } = reliabilityColor(cell.r);
 
       // Scale alpha by the user opacity slider (slider default 0.6 = 60%)
       const cellAlpha = alpha * (opacity / 0.6);
 
-      // Create rectangles in 3 world copies for dateline support
-      for (const offset of [-360, 0, 360]) {
+      for (const offset of offsets) {
         const bounds = [
           [cell.lat - half, cell.lon - half + offset],
           [cell.lat + half, cell.lon + half + offset],
