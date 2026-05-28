@@ -83,15 +83,5 @@ export default function useCallsignLookup(call) {
     fetchCall(baseCall);
   }, [call, fetchCall]);
 
-  // Purge cache on QRZ config change events
-  useEffect(() => {
-    const handler = () => {
-      cache.delete(CACHE_KEY);
-      fetchCall(extractBaseCall(call));
-    };
-    window.addEventListener('openhamclock-qrz-config-changed', handler);
-    return () => window.removeEventListener('openhamclock-qrz-config-changed', handler);
-  }, [call, fetchCall]);
-
   return { data, loading, error };
 }

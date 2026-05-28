@@ -18,9 +18,9 @@ const CallsignPopupContext = createContext(null);
 export function CallsignPopupProvider({ children }) {
   const [popupState, setPopupState] = useState({ open: false, call: null, anchorRef: null });
   const anchorRef = useRef(null);
+  const popupHeightRef = useRef(160); // default estimate, updated by popup after render
 
   const showPopup = useCallback((call, anchorEl) => {
-    // Store anchor element in ref for the popup to position against
     anchorRef.current = anchorEl;
     setPopupState({ open: true, call, anchorRef });
   }, []);
@@ -33,7 +33,12 @@ export function CallsignPopupProvider({ children }) {
     <CallsignPopupContext.Provider value={{ showPopup, hidePopup }}>
       {children}
       {popupState.open && popupState.call && (
-        <CallsignPopup anchorRef={popupState.anchorRef} call={popupState.call} onClose={hidePopup} />
+        <CallsignPopup
+          anchorRef={popupState.anchorRef}
+          call={popupState.call}
+          onClose={hidePopup}
+          popupHeightRef={popupHeightRef}
+        />
       )}
     </CallsignPopupContext.Provider>
   );

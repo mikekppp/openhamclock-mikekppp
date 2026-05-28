@@ -21,7 +21,7 @@ const MARGIN = 8;
 // Extra padding from right edge to avoid clipping
 const RIGHT_MARGIN = 16;
 
-export default function usePopupPosition(anchorRef, popupWidth = 260) {
+export default function usePopupPosition(anchorRef, popupHeightRef, popupWidth = 260, onRecalculate = null) {
   const [position, setPosition] = useState({
     top: 0,
     left: 0,
@@ -36,21 +36,21 @@ export default function usePopupPosition(anchorRef, popupWidth = 260) {
       if (!anchor) return;
 
       const rect = anchor.getBoundingClientRect();
-      const popupH = 160; // approximate popup height (will adjust)
+      const popupH = popupHeightRef?.current ?? 120;
       const availBelow = window.innerHeight - rect.bottom - MARGIN;
       const availAbove = rect.top - MARGIN;
 
       let top;
-      let cls = 'below';
+      let cls = 'above';
 
-      if (availBelow >= popupH * 0.6 || availBelow > availAbove) {
-        // Position below anchor
-        top = rect.bottom + MARGIN;
-        cls = 'below';
-      } else {
+      if (availAbove >= popupH * 0.6 || availAbove > availBelow) {
         // Position above anchor
         top = rect.top - MARGIN - popupH;
         cls = 'above';
+      } else {
+        // Position below anchor
+        top = rect.bottom + MARGIN;
+        cls = 'below';
       }
 
       // Horizontal: align left edge with anchor's left edge
@@ -65,7 +65,12 @@ export default function usePopupPosition(anchorRef, popupWidth = 260) {
 
       setPosition({ top, left, className: cls });
     });
-  }, [anchorRef, popupWidth]);
+  }, [anchorRef, popupHeightRef, popupWidth]);
+
+  // Expose recalculate function to caller (popup component)
+  useEffect(() => {
+    if (onRecalculate) onRecalculate(recalculate);
+  }, [recalculate, onRecalculate]);
 
   useEffect(() => {
     recalculate();

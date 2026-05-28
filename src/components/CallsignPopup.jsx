@@ -24,8 +24,8 @@ import { esc } from '../utils/escapeHtml.js';
 import { IconExternalLink } from './Icons.jsx';
 import { extractBaseCall } from './CallsignLink.jsx';
 
-// Approximate height for initial positioning calculation
-const POPUP_HEIGHT_ESTIMATE = 160;
+// Approximate height for initial positioning (actual measured via ResizeObserver)
+const POPUP_HEIGHT_ESTIMATE = 120;
 
 // Styling helpers
 const accentColor = 'var(--accent-cyan)';
@@ -34,10 +34,36 @@ const bgColor = 'var(--bg-secondary)';
 const textColor = 'var(--text-primary)';
 const mutedColor = 'var(--text-muted)';
 
-function CallsignPopup({ anchorRef, call, onClose }) {
+function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
   const { t } = useTranslation();
   const popupRef = useRef(null);
-  const pos = usePopupPosition(anchorRef, POPUP_HEIGHT_ESTIMATE);
+  const recalculateRef = useRef(null);
+  const pos = usePopupPosition(anchorRef, popupHeightRef, POPUP_HEIGHT_ESTIMATE, (fn) => {
+    recalculateRef.current = fn;
+  });
+
+  // Measure actual popup height and report it back to the hook
+  useEffect(() => {
+    const el = popupRef.current;
+    if (!el) return;
+
+    const reportHeight = () => {
+      const h = el.getBoundingClientRect().height;
+      if (popupHeightRef && h > 0 && h !== popupHeightRef.current) {
+        popupHeightRef.current = h;
+        recalculateRef.current?.();
+      }
+    };
+
+    // Initial measurement
+    reportHeight();
+
+    // Watch for async content changes (e.g., API data arriving)
+    const observer = new ResizeObserver(reportHeight);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
 
   // Fetch rich data from server
   const { data, loading: apiLoading } = useCallsignLookup(call);
