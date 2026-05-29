@@ -16,21 +16,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { apiFetch } from '../../utils/apiFetch.js';
 import { extractBaseCall } from '../../components/CallsignLink.jsx';
 
-// Cache key prefix so we can purge on events (e.g., QRZ config change)
-const CACHE_KEY = 'callsign-lookup';
-
 // TTL: 24 hours (matches server-side cache TTL)
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-// In-memory cache
+// In-memory cache keyed by callsign
 const cache = new Map();
 
 export default function useCallsignLookup(call) {
-  const [data, setData] = useState(() => {
-    const cached = cache.get(CACHE_KEY);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) return cached.data;
-    return null;
-  });
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const fetchInProgress = useRef(false);
@@ -42,7 +35,9 @@ export default function useCallsignLookup(call) {
     setError(null);
 
     try {
-      const res = await apiFetch(`/api/callsign/${encodeURIComponent(callsign)}`);
+      const res = await apiFetch(`/api/callsign/${encodeURIComponent(callsign)}`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (!res) {
         // Backoff — don't treat as error
         setData(null);
@@ -57,7 +52,7 @@ export default function useCallsignLookup(call) {
       }
       const result = await res.json();
       setData(result);
-      cache.set(CACHE_KEY, { data: result, timestamp: Date.now() });
+      cache.set(callsign, { data: result, timestamp: Date.now() });
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(err.message);
@@ -72,9 +67,8 @@ export default function useCallsignLookup(call) {
     const baseCall = extractBaseCall(call);
     if (!baseCall) return;
 
-    // Check cache first
-    const cached = cache.get(CACHE_KEY);
-    if (cached && cached.data?.callsign === baseCall && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    const cached = cache.get(baseCall);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       setData(cached.data);
       setLoading(false);
       return;

@@ -15,13 +15,13 @@
  *   />
  */
 import { useRef, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import useCallsignLookup from '../hooks/app/useCallsignLookup.js';
 import usePopupPosition from '../hooks/app/usePopupPosition.js';
 import { getCallbookUrl, getCallbook, CALLBOOKS } from '../utils/callbook.js';
 import { ctyLookup } from '../utils/ctyLookup.js';
 import { esc } from '../utils/escapeHtml.js';
-import { IconGlobe } from './Icons.jsx';
+
+import { IconGlobe, IconRefresh } from './Icons.jsx';
 import { extractBaseCall } from './CallsignLink.jsx';
 
 // Approximate height for initial positioning (actual measured via ResizeObserver)
@@ -35,7 +35,6 @@ const textColor = 'var(--text-primary)';
 const mutedColor = 'var(--text-muted)';
 
 function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
-  const { t } = useTranslation();
   const popupRef = useRef(null);
   const recalculateRef = useRef(null);
   const pos = usePopupPosition(anchorRef, popupHeightRef, POPUP_HEIGHT_ESTIMATE, (fn) => {
@@ -66,7 +65,7 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
   }, []);
 
   // Fetch rich data from server
-  const { data, loading: apiLoading } = useCallsignLookup(call);
+  const { data, loading: apiLoading, error } = useCallsignLookup(call);
 
   // Synchronous ctyLookup for instant CQ/ITU zones
   const cty = ctyLookup(call);
@@ -110,16 +109,8 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
   const grid = data?.grid || cty?.grid || null;
   const country = data?.country && data?.country !== 'Unknown' ? data.country : cty?.entity || null;
   const state = data?.state || null;
-  const lat = data?.lat || cty?.lat || null;
-  const lon = data?.lon || cty?.lon || null;
   const cqZone = data?.cqZone || cty?.cq || null;
   const ituZone = data?.ituZone || cty?.itu || null;
-
-  // Position info row
-  const positionInfo =
-    [lat != null, lon != null].filter(Boolean).length > 0
-      ? `${lat?.toFixed(4) || '?'}°, ${lon?.toFixed(4) || '?'}°`
-      : null;
 
   const handleCallbookClick = (e) => {
     e.preventDefault();
@@ -154,7 +145,7 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
       }}
       className="callsign-popup"
     >
-      {/* Header row: callsign + external link icon */}
+      {/* Header row: callsign + loading indicator + external link icon */}
       <div
         style={{
           display: 'flex',
@@ -174,28 +165,38 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
         >
           {esc(call)}
         </span>
-        <a
-          href={getCallbookUrl(baseCall)}
-          onClick={handleCallbookClick}
-          title={`Open ${call} in ${callbookLabel}`}
-          rel="noopener noreferrer"
-          style={{
-            color: accentColor,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            opacity: 0.7,
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.opacity = '1';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = '0.7';
-          }}
-        >
-          <IconGlobe size={12} color={accentColor} />
-        </a>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {apiLoading && !data && (
+            <IconRefresh size={12} color={accentColor} style={{ animation: 'spin 1s linear infinite' }} />
+          )}
+          {error && !data && !apiLoading && (
+            <span title={esc(error)} style={{ cursor: 'help', opacity: 0.7 }}>
+              <IconRefresh size={12} color="var(--accent-red)" />
+            </span>
+          )}
+          <a
+            href={getCallbookUrl(baseCall)}
+            onClick={handleCallbookClick}
+            title={`Open ${call} in ${callbookLabel}`}
+            rel="noopener noreferrer"
+            style={{
+              color: accentColor,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              opacity: 0.7,
+              transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.opacity = '1';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.opacity = '0.7';
+            }}
+          >
+            <IconGlobe size={12} color={accentColor} />
+          </a>
+        </span>
       </div>
 
       {/* Body */}
@@ -230,16 +231,6 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
           <div style={{ display: 'flex', gap: '10px', marginBottom: '3px', fontSize: '11px', opacity: 0.8 }}>
             {cqZone != null && <span>CQ {esc(String(cqZone))}</span>}
             {ituZone != null && <span>ITU {esc(String(ituZone))}</span>}
-          </div>
-        )}
-
-        {/* Coordinates */}
-        {positionInfo && <div style={{ fontSize: '11px', opacity: 0.7 }}>{esc(positionInfo)}</div>}
-
-        {/* Loading indicator */}
-        {apiLoading && !data && (
-          <div style={{ marginTop: '4px', fontSize: '10px', opacity: 0.5, fontStyle: 'italic' }}>
-            {t('callsignPopup.lookupLoading', 'Looking up...')}
           </div>
         )}
       </div>
