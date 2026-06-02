@@ -4948,6 +4948,113 @@ export const SettingsPanel = ({
                 </div>
               </div>
 
+              {/* Core Maintainers */}
+              <div
+                style={{
+                  marginTop: '12px',
+                  padding: '14px 16px',
+                  background: 'var(--bg-tertiary)',
+                  borderRadius: '8px',
+                  borderLeft: '3px solid var(--accent-amber)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--accent-amber)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    marginBottom: '10px',
+                    textAlign: 'center',
+                  }}
+                >
+                  Core Maintainers
+                </div>
+                <div
+                  style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '12px' }}
+                >
+                  The folks doing the day-to-day heavy lifting alongside K0CJH.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    {
+                      name: 'Jörg Holzapfel',
+                      callsign: 'DO1HOZ',
+                      handle: 'ceotjoe',
+                      focus: 'rig-bridge, Cloud Relay, MeshCom',
+                    },
+                    {
+                      name: 'Alan Hargreaves',
+                      handle: 'alanhargreaves',
+                      focus: 'Server reliability, local install detection',
+                    },
+                    {
+                      name: 'Laura Batalha',
+                      handle: 'lbatalha',
+                      focus: 'API design, Docker / GHCR infrastructure',
+                    },
+                    {
+                      name: 'Michael R Wheeley',
+                      handle: 'MichaelWheeley',
+                      focus: 'Satellites, geo utilities, translations',
+                    },
+                  ].map((m) => (
+                    <a
+                      key={m.handle}
+                      href={`https://github.com/${m.handle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        padding: '8px 12px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: '6px',
+                        textDecoration: 'none',
+                        color: 'var(--text-primary)',
+                        border: '1px solid transparent',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--accent-amber)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = 'transparent';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600 }}>{m.name}</span>
+                        {m.callsign && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontFamily: 'var(--font-mono)',
+                              color: 'var(--accent-amber)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {m.callsign}
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontFamily: 'var(--font-mono)',
+                            color: 'var(--text-muted)',
+                          }}
+                        >
+                          @{m.handle}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {m.focus}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
               {/* Contributors */}
               <div
                 style={{
@@ -4978,8 +5085,6 @@ export const SettingsPanel = ({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
                   {[
                     'creinemann',
-                    'ceotjoe',
-                    'alanhargreaves',
                     'dmazan',
                     'Delerius',
                     'rfreedman',
@@ -4993,6 +5098,7 @@ export const SettingsPanel = ({
                     'ThePangel',
                     'w8mej',
                     'JoshuaNewport',
+                    'JoshuaLutgendorff',
                     'denete',
                     'kmanwar89',
                     'KentenRoth',

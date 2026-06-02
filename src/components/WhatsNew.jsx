@@ -7,7 +7,13 @@ import { useState, useEffect } from 'react';
 
 // ─── Announcement Banner ────────────────────────────────────
 // Set to null to hide. Shown at the top of the What's New modal.
-const ANNOUNCEMENT = null;
+const ANNOUNCEMENT = {
+  emoji: '⭐',
+  text: 'Meet the core maintainers. The project has grown well past what one operator can carry alone, and four people have been doing the day-to-day heavy lifting alongside Chris this past cycle — pull requests, reviews, issue triage, translations, and a steady stream of polish. Please give them a wave on the air or a star on GitHub:\n\n• Jörg Holzapfel (DO1HOZ / @ceotjoe) — rig-bridge plugin work, Cloud Relay, MeshCom LoRa integration, the SmartSDR PTT fix, and consistent dependency / accessibility cleanup\n• Alan Hargreaves (@alanhargreaves) — useLocalInstall refactor, QRZ credentials consolidation, server reliability bug reports, and a lot of patient post-merge triage\n• Laura Batalha (@lbatalha) — accurate-timezone API, the Docker workflow split that gave dxspider-proxy and iturhfprop-service their own GHCR images, callsign-lookup picker\n• Michael R Wheeley (@MichaelWheeley) — by far the most prolific PR author this cycle: satellite OMM rewrite, the +180 Maidenhead antimeridian fix on both client and server, satellite list curation, the lang-sort CI gate, plus a long list of smaller fixes that add up\n\nThis release exists because of you four. 73 from K0CJH.',
+  color: '#ffd700',
+  bg: 'rgba(255, 215, 0, 0.10)',
+  border: 'rgba(255, 215, 0, 0.30)',
+};
 
 // ─── Changelog ──────────────────────────────────────────────
 // Add new versions at the TOP of this array.
