@@ -997,7 +997,7 @@ sudo journalctl -u openhamclock -f     # View logs
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-.\scripts\setup-windows.ps1
+iex (iwr https://raw.githubusercontent.com/accius/openhamclock/main/scripts/setup-windows.ps1).Content
 ```
 
 This clones the repo to `%USERPROFILE%\openhamclock`, installs dependencies, builds the frontend, creates a `start.bat` launcher, and adds a desktop shortcut. After install, edit `%USERPROFILE%\openhamclock\.env` to set your `CALLSIGN` and `LOCATOR`, then start with `start.bat` or `npm start`.
