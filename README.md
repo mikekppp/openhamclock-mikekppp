@@ -1173,14 +1173,15 @@ sudo systemctl restart openhamclock
 
 Run the bundled update script from your openhamclock directory:
 
-```bat
+```powershell
 cd C:\Users\YourName\openhamclock
-scripts\update.bat
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\update.ps1
 ```
 
 The script backs up your `.env` → pulls latest code → installs new dependencies → rebuilds the frontend → restores your `.env`. Then restart:
 
-```bat
+```powershell
 npm start
 ```
 
@@ -1287,7 +1288,7 @@ openhamclock/
 │   ├── setup-pi.sh               # Raspberry Pi one-line installer
 │   ├── setup-linux.sh            # Linux / macOS installer (--service for systemd)
 │   ├── setup-windows.ps1         # Windows PowerShell installer
-│   ├── update.bat                # Windows update script (backup → pull → rebuild → restore)
+│   ├── update.ps1                # Windows update script (backup → pull → rebuild → restore)
 │   └── update.sh                 # Linux/Pi update script (backup → pull → rebuild → restore)
 ├── Dockerfile                # Multi-stage Docker build
 ├── docker-compose.yml        # Docker Compose configuration
