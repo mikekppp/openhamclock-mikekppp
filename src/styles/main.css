@@ -1269,6 +1269,15 @@ pre,
     'Noto Emoji';
 }
 
+/* Clickable callsigns in map popups */
+[data-map-call] {
+  cursor: pointer;
+}
+[data-map-call]:hover:not([style*='color']) {
+  color: var(--accent-white);
+  font-weight: bold;
+}
+
 /* Callsign popup animation */
 @keyframes fadeIn {
   from {
