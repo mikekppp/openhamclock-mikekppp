@@ -2,7 +2,7 @@
  * Classic HamClock-style layout — faithful WB0OEW HamClock recreation
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { DXNewsTicker, WorldMap } from '../components';
+import { DXNewsTicker, WorldMap, DXLocalTime } from '../components';
 import { DXGridInput } from '../components/DXGridInput.jsx';
 import { DXCallsignInput } from '../components/DXCallsignInput.jsx';
 import { DXFavorites } from '../components/DXFavorites.jsx';
@@ -105,6 +105,10 @@ export default function ClassicLayout(props) {
     dxGrid,
     deSunTimes,
     dxSunTimes,
+    dxTimezone,
+    dxTimezoneApiError,
+    dxSolarFallback,
+    currentTime,
     tempUnit,
     setTempUnit,
     showDxWeather,
@@ -901,6 +905,9 @@ export default function ClassicLayout(props) {
                     </>
                   )}
                 </div>
+                {dxLocation.lat != null && dxLocation.lon != null && (
+                  <DXLocalTime currentTime={currentTime} timezone={dxTimezone} solarTimezone={dxSolarFallback} />
+                )}
                 <div style={{ marginTop: '6px', color: '#ff8800', fontSize: '18px', fontWeight: '600' }}>
                   <span>{bearing != null ? `${bearing}°` : '--°'}</span>
                   <span style={{ marginLeft: '12px' }}>{distStr}</span>
