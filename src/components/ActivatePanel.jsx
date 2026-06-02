@@ -218,7 +218,17 @@ export const ActivatePanel = ({
             <div className="loading-spinner" />
           </div>
         ) : spots && spots.length > 0 ? (
-          <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
+          <div
+            role="table"
+            aria-label={`${mapDefs.label || 'Activation'} spots`}
+            style={{ fontSize: '10px', fontFamily: 'var(--font-mono)' }}
+          >
+            <div className="visually-hidden" role="row">
+              <span role="columnheader">Callsign</span>
+              <span role="columnheader">Reference</span>
+              <span role="columnheader">Frequency</span>
+              <span role="columnheader">Time</span>
+            </div>
             {spots.map((spot, i) => (
               <div
                 key={`${spot.call}-${spot.ref}-${i}`}
@@ -228,6 +238,7 @@ export const ActivatePanel = ({
                 }}
               >
                 <div
+                  role="row"
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '62px 72px 58px 1fr',
@@ -241,6 +252,7 @@ export const ActivatePanel = ({
                   }}
                 >
                   <span
+                    role="cell"
                     style={{
                       color: mapDefs.color,
                       fontWeight: '600',
@@ -252,6 +264,7 @@ export const ActivatePanel = ({
                     <CallsignLink call={spot.call} color={mapDefs.color} fontWeight="600" onPopup={showPopup} />
                   </span>
                   <span
+                    role="cell"
                     style={{
                       color: 'var(--text-muted)',
                       overflow: 'hidden',
@@ -262,15 +275,22 @@ export const ActivatePanel = ({
                   >
                     {spot.ref}
                   </span>
-                  <span style={{ color: 'var(--accent-cyan)', textAlign: 'right' }} title={`${spot.freq} ${spot.mode}`}>
+                  <span
+                    role="cell"
+                    style={{ color: 'var(--accent-cyan)', textAlign: 'right' }}
+                    title={`${spot.freq} ${spot.mode}`}
+                  >
                     {(() => {
                       if (!spot.freq) return '?';
                       const freqVal = parseFloat(spot.freq);
                       // Already in MHz in the hook
                       return freqVal.toFixed(3);
                     })()}
+                    <span className="visually-hidden"> megahertz</span>
                   </span>
-                  <span style={{ color: 'var(--text-muted)', textAlign: 'right', fontSize: '9px' }}>{spot.time}</span>
+                  <span role="cell" style={{ color: 'var(--text-muted)', textAlign: 'right', fontSize: '9px' }}>
+                    {spot.time}
+                  </span>
                 </div>
                 {spot.comments?.length > 0 && (
                   <div
