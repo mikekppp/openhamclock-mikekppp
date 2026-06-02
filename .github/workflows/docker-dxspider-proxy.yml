@@ -29,6 +29,7 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       packages: write
@@ -70,7 +71,7 @@ jobs:
         id: push
         uses: docker/build-push-action@v7
         with:
-          context: .
+          context: ./dxspider-proxy
           push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
