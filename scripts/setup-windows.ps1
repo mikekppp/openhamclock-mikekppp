@@ -92,23 +92,22 @@ function Create-Shortcut {
 
 # Create batch file launcher
 function Create-Launcher {
-    $batchContent = @"
-@echo off
-cd /d "$InstallDir"
-if not exist "node_modules" (
-    echo node_modules not found - running npm install...
-    call npm install
-    if errorlevel 1 ( echo Install failed & pause & exit /b 1 )
-    call npm run build
-    if errorlevel 1 ( echo Build failed & pause & exit /b 1 )
-)
-echo Starting OpenHamClock...
-echo Open http://localhost:3000 in your browser
-npm start
-pause
-"@
-    
-    Set-Content -Path "$InstallDir\start.bat" -Value $batchContent
+    $lines = @(
+        '@echo off',
+        "cd /d `"$InstallDir`"",
+        'if not exist "node_modules" (',
+        '    echo node_modules not found - running npm install...',
+        '    call npm install',
+        '    if errorlevel 1 ( echo Install failed ^& pause ^& exit /b 1 )',
+        '    call npm run build',
+        '    if errorlevel 1 ( echo Build failed ^& pause ^& exit /b 1 )',
+        ')',
+        'echo Starting OpenHamClock...',
+        'echo Open http://localhost:3000 in your browser',
+        'npm start',
+        'pause'
+    )
+    Set-Content -Path "$InstallDir\start.bat" -Value $lines -Encoding UTF8
     Write-Host "✓ Launcher created: $InstallDir\start.bat" -ForegroundColor Green
 }
 
