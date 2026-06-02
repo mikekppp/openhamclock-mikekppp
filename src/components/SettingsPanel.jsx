@@ -5511,7 +5511,10 @@ export const SettingsPanel = ({
                           try {
                             const parsed = new URL(rigHost);
                             if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-                              return `${rigHost.replace(/\/$/, '')}:${rigPort}`;
+                              // Reconstruct from parsed components — never interpolate the
+                              // raw user input — and strip any port from the host so we
+                              // can append rigPort cleanly.
+                              return `${parsed.protocol}//${parsed.hostname}:${rigPort}`;
                             }
                           } catch {
                             /* invalid URL — fall through to localhost */
