@@ -29,6 +29,19 @@ const ANNOUNCEMENT = {
 
 const CHANGELOG = [
   {
+    version: '26.4.1',
+    date: '2026-06-02',
+    heading:
+      'Same-day hotfix for v26.4.0. The new OMM satellite resolver from the June release dropped the AMSAT and SatNOGS fallback sources that v26.3.3 had, which meant any deployment whose egress IPs could not reach CelesTrak (notably the hosted openhamclock.com on Railway) saw zero satellites resolved. Self-hosted installs were unaffected because their home / LAN IPs reach CelesTrak fine. This hotfix restores both fallbacks with a TLE→OMM converter so the new resolver structure stays intact.',
+    features: [
+      {
+        icon: '🛰️',
+        title: 'HOTFIX: Restore AMSAT + SatNOGS Satellite Fallback Sources',
+        desc: 'The v26.4.0 OMM rewrite consolidated to CelesTrak and Space-Track only, dropping the AMSAT and SatNOGS feeds that v26.3.3 used. When the hosted production server deployed, its Railway egress IPs were silently dropped at the TCP level by CelesTrak (the same intermittent block that has hit cloud hosts before) and with no alternate sources, zero satellites resolved. New server-side TLE-to-OMM converter (server/utils/tle-to-omm.js) lets the new OMM resolver consume the AMSAT nasabare.txt bulk feed plus per-NORAD SatNOGS DB lookups, wired in as state-machine fallback stages that activate when CelesTrak times out or is unreachable. AMSAT covers the 23 amateur sats; SatNOGS picks up the remaining 17 (weather plus active). Self-hosted installs benefit too — the resolver now has three independent upstreams instead of one.',
+      },
+    ],
+  },
+  {
     version: '26.4.0',
     date: '2026-06-02',
     heading:
