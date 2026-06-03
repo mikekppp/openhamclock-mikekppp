@@ -382,7 +382,13 @@ export const DXClusterPanel = ({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <CallsignLink call={spot.call} color="var(--text-primary)" fontWeight="700" onPopup={showPopup} />
+                  <CallsignLink
+                    call={spot.call}
+                    color="var(--text-primary)"
+                    fontWeight="700"
+                    onPopup={showPopup}
+                    location={spot.dxGrid ? { grid: spot.dxGrid } : undefined}
+                  />
                 </div>
                 <div
                   role="cell"

@@ -670,6 +670,7 @@ const PSKReporterPanel = ({
                           fontWeight="600"
                           fontSize="11px"
                           onPopup={showPopup}
+                          location={grid ? { grid } : undefined}
                         />
                         {showMutualReception && isMutual(report) && (
                           <span
@@ -963,7 +964,13 @@ const PSKReporterPanel = ({
                         {d.dt != null ? `${Number(d.dt) >= 0 ? '+' : ''}${Number(d.dt).toFixed(1)}` : ''}
                       </span>
                       <span style={{ color: '#22d3ee', fontWeight: '600', minWidth: '65px' }}>
-                        <CallsignLink call={d.callsign} color="#22d3ee" fontWeight="600" onPopup={showPopup} />
+                        <CallsignLink
+                          call={d.callsign}
+                          color="#22d3ee"
+                          fontWeight="600"
+                          onPopup={showPopup}
+                          location={d.grid ? { grid: d.grid } : undefined}
+                        />
                       </span>
                       {d.grid && <span style={{ color: '#a78bfa', fontSize: '10px', minWidth: '35px' }}>{d.grid}</span>}
                       <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
@@ -1010,6 +1017,7 @@ const PSKReporterPanel = ({
                           color={q.band ? getBandColor(q.frequency / 1000000) : 'var(--accent-green)'}
                           fontWeight="600"
                           onPopup={showPopup}
+                          location={q.dxGrid ? { grid: q.dxGrid } : undefined}
                         />
                       </span>
                       <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{q.band}</span>

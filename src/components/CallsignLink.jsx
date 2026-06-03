@@ -31,7 +31,8 @@ export function extractBaseCall(raw) {
 }
 
 // ── The callsign link itself ──
-// onPopup(call, anchorEl) — callback for popup mode
+// onPopup(call, anchorEl, location?) — callback for popup mode
+// location — { grid: string } or { lat: number, lon: number } (optional)
 export default function CallsignLink({
   call,
   color = 'inherit',
@@ -40,6 +41,7 @@ export default function CallsignLink({
   style = {},
   children,
   onPopup,
+  location,
 }) {
   const spanRef = useRef(null);
 
@@ -48,7 +50,7 @@ export default function CallsignLink({
   if (onPopup) {
     const handleClick = (e) => {
       e.stopPropagation();
-      onPopup(call, spanRef.current);
+      onPopup(call, spanRef.current, location);
     };
 
     return (

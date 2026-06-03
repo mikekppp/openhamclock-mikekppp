@@ -132,7 +132,13 @@ function NodesTab({ nodes, loading, onSpotClick, onHoverSpot }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <CallsignLink call={call} color="var(--text-primary)" fontWeight="700" onPopup={showPopup} />
+                <CallsignLink
+                  call={call}
+                  color="var(--text-primary)"
+                  fontWeight="700"
+                  onPopup={showPopup}
+                  location={hasPos ? { lat: node.lat, lon: node.lon } : undefined}
+                />
                 {!hasPos && (
                   <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                     {t('meshcomPanel.noPosition')}

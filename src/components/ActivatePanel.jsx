@@ -261,7 +261,13 @@ export const ActivatePanel = ({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    <CallsignLink call={spot.call} color={mapDefs.color} fontWeight="600" onPopup={showPopup} />
+                    <CallsignLink
+                      call={spot.call}
+                      color={mapDefs.color}
+                      fontWeight="600"
+                      onPopup={showPopup}
+                      location={spot.grid ? { grid: spot.grid } : undefined}
+                    />
                   </span>
                   <span
                     role="cell"

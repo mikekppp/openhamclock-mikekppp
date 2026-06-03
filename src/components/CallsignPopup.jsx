@@ -14,7 +14,7 @@
  *     onClose={() => setShowPopup(false)}
  *   />
  */
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import useCallsignLookup from '../hooks/app/useCallsignLookup.js';
 import usePopupPosition from '../hooks/app/usePopupPosition.js';
 import { getCallbookUrl, getCallbook, CALLBOOKS } from '../utils/callbook.js';
@@ -34,7 +34,7 @@ const bgColor = 'var(--bg-secondary)';
 const textColor = 'var(--text-primary)';
 const mutedColor = 'var(--text-muted)';
 
-function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
+function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
   const popupRef = useRef(null);
   const recalculateRef = useRef(null);
   const pos = usePopupPosition(anchorRef, popupHeightRef, POPUP_HEIGHT_ESTIMATE, (fn) => {
@@ -112,6 +112,69 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
   const cqZone = data?.cqZone || cty?.cq || null;
   const ituZone = data?.ituZone || cty?.itu || null;
 
+  // Local time from geo-time API
+  // Priority: location prop (spot grid/coords) > callsign lookup grid > cty grid
+  const [localTime, setLocalTime] = useState(null);
+
+  useEffect(() => {
+    let targetGrid = null;
+    let lat = null;
+    let lon = null;
+
+    // Prefer spot location metadata
+    if (location) {
+      if (location.grid) {
+        targetGrid = location.grid;
+      } else if (location.lat != null && location.lon != null) {
+        lat = location.lat;
+        lon = location.lon;
+      }
+    }
+
+    // Fall back to callsign lookup grid
+    if (!targetGrid && lat == null && grid) {
+      targetGrid = grid;
+    }
+
+    // No location data at all — skip
+    if (!targetGrid && lat == null) {
+      setLocalTime(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const fetchLocalTime = (url) => {
+      fetch(url, { signal: controller.signal })
+        .then((r) => r.json())
+        .then((result) => {
+          if (result.localTime && result.timezone) {
+            setLocalTime(result.localTime);
+          } else {
+            setLocalTime(null);
+          }
+        })
+        .catch(() => {
+          setLocalTime(null);
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+        });
+    };
+
+    if (targetGrid) {
+      fetchLocalTime(`/api/geo-time?grid=${encodeURIComponent(targetGrid)}`);
+    } else {
+      fetchLocalTime(`/api/geo-time?lat=${lat}&lon=${lon}`);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [location, grid]);
+
   const handleCallbookClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -145,7 +208,7 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
       }}
       className="callsign-popup"
     >
-      {/* Header row: callsign + loading indicator + external link icon */}
+      {/* Header row: callsign + local time + controls */}
       <div
         style={{
           display: 'flex',
@@ -155,15 +218,29 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef }) {
           borderBottom: `1px solid ${borderColor}`,
         }}
       >
-        <span
-          style={{
-            fontWeight: '700',
-            fontSize: '13px',
-            fontFamily: 'var(--font-mono, monospace)',
-            letterSpacing: '0.5px',
-          }}
-        >
-          {esc(call)}
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+          <span
+            style={{
+              fontWeight: '700',
+              fontSize: '13px',
+              fontFamily: 'var(--font-mono, monospace)',
+              letterSpacing: '0.5px',
+            }}
+          >
+            {esc(call)}
+          </span>
+          {localTime && (
+            <span
+              style={{
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '12px',
+                color: accentColor,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {localTime}
+            </span>
+          )}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {apiLoading && !data && (

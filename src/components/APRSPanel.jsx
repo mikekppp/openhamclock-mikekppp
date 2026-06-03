@@ -535,6 +535,9 @@ const APRSPanel = ({ aprsData, showOnMap, onToggleMap, onHoverSpot, deLocation, 
                       color="var(--text-primary)"
                       fontWeight="700"
                       onPopup={showPopup}
+                      location={
+                        station.lat != null && station.lon != null ? { lat: station.lat, lon: station.lon } : undefined
+                      }
                     />
                     {station.source === 'local-tnc' && (
                       <span
