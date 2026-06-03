@@ -359,6 +359,32 @@ export const IconExternalLink = ({ size = defaults.size, color = defaults.color,
   </svg>
 );
 
+// ── QTH / Home icon ────────────────────────────────────────────────
+// House with radio antenna on roof — for QTH with signal
+export const IconQth = ({ size = defaults.size, color = defaults.color, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke={color}
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    {/* House body */}
+    <path d="M2 8.5l6-5.5L14 8.5V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
+    {/* Door */}
+    <path d="M6 15v-4h4v4" />
+    {/* Antenna */}
+    <line x1="10" y1="3" x2="10" y2="1" />
+    {/* Signal arcs */}
+    <path d="M11.5 2a3 3 0 0 1 0 2.5" />
+    <path d="M13 1a5 5 0 0 1 0 4.5" />
+  </svg>
+);
+
 export default {
   IconSearch,
   IconRefresh,
@@ -378,4 +404,5 @@ export default {
   IconShrink,
   IconTrash,
   IconExternalLink,
+  IconQth,
 };
