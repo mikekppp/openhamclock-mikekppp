@@ -19,10 +19,14 @@ import useCallsignLookup from '../hooks/app/useCallsignLookup.js';
 import usePopupPosition from '../hooks/app/usePopupPosition.js';
 import { getCallbookUrl, getCallbook, CALLBOOKS } from '../utils/callbook.js';
 import { ctyLookup } from '../utils/ctyLookup.js';
+import { latLonToMaidenhead } from '../utils/index.js';
 import { esc } from '../utils/escapeHtml.js';
 
 import { IconGlobe, IconRefresh } from './Icons.jsx';
 import { extractBaseCall } from './CallsignLink.jsx';
+
+// ── Timezone cache (module-level, survives remounts) ──────────────────
+const tzCache = new Map(); // grid → timezone string
 
 // Approximate height for initial positioning (actual measured via ResizeObserver)
 const POPUP_HEIGHT_ESTIMATE = 120;
@@ -113,73 +117,61 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
   const country = data?.country && data?.country !== 'Unknown' ? data.country : cty?.entity || null;
   const state = data?.state || null;
 
-  // Local time from geo-time API
-  // Priority: location prop (spot grid/coords) > callbook lat/lon > callbook grid > cty grid
+  // Local time — cache timezone by grid, format with Intl on demand
+  // Convert lat/lon to Maidenhead grid for stable cache keys
+  let effectiveGrid = null;
+  if (location?.grid) {
+    effectiveGrid = location.grid;
+  } else if (location?.lat != null && location?.lon != null) {
+    effectiveGrid = latLonToMaidenhead({ lat: location.lat, lon: location.lon });
+  } else if (data?.lat != null && data?.lon != null) {
+    effectiveGrid = latLonToMaidenhead({ lat: data.lat, lon: data.lon });
+  } else if (grid) {
+    effectiveGrid = grid;
+  }
+
   const [localTime, setLocalTime] = useState(null);
 
   useEffect(() => {
-    let targetGrid = null;
-    let lat = null;
-    let lon = null;
-
-    // Prefer spot location metadata
-    if (location) {
-      if (location.grid) {
-        targetGrid = location.grid;
-      } else if (location.lat != null && location.lon != null) {
-        lat = location.lat;
-        lon = location.lon;
-      }
-    }
-
-    // Fall back to callbook lat/lon first, then grid
-    if (!targetGrid && lat == null) {
-      if (data?.lat != null && data?.lon != null) {
-        lat = data.lat;
-        lon = data.lon;
-      } else if (grid) {
-        targetGrid = grid;
-      }
-    }
-
-    // No location data at all — skip
-    if (!targetGrid && lat == null) {
+    if (!effectiveGrid) {
       setLocalTime(null);
       return;
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const fetchLocalTime = (url) => {
-      fetch(url, { signal: controller.signal })
-        .then((r) => r.json())
-        .then((result) => {
-          if (result.localTime && result.timezone) {
-            setLocalTime(result.localTime);
-          } else {
-            setLocalTime(null);
-          }
-        })
-        .catch(() => {
-          setLocalTime(null);
-        })
-        .finally(() => {
-          clearTimeout(timeoutId);
-        });
-    };
-
-    if (targetGrid) {
-      fetchLocalTime(`/api/geo-time?grid=${encodeURIComponent(targetGrid)}`);
-    } else {
-      fetchLocalTime(`/api/geo-time?lat=${lat}&lon=${lon}`);
+    // Check cache first
+    const cached = tzCache.get(effectiveGrid);
+    if (cached) {
+      setLocalTime(
+        new Intl.DateTimeFormat(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: cached,
+        }).format(new Date()),
+      );
+      return;
     }
 
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [location, grid, data]);
+    // Cache miss — fetch timezone from API
+    fetch(`/api/geo-time?grid=${encodeURIComponent(effectiveGrid)}`, {
+      signal: AbortSignal.timeout(5000),
+    })
+      .then((r) => r.json())
+      .then((result) => {
+        if (result.timezone) {
+          tzCache.set(effectiveGrid, result.timezone);
+          setLocalTime(
+            new Intl.DateTimeFormat(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+              timeZone: result.timezone,
+            }).format(new Date()),
+          );
+        }
+      })
+      .catch(() => {});
+  }, [effectiveGrid]);
 
   const handleCallbookClick = (e) => {
     e.preventDefault();
