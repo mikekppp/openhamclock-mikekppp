@@ -70,6 +70,9 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
   // Synchronous ctyLookup for grid and country/entity
   const cty = ctyLookup(call);
 
+  // Whether body is expanded (API resolved) — drives grid-template-rows animation
+  const expanded = !apiLoading && !!data;
+
   // Extract base call for callbook URL
   const baseCall = extractBaseCall(call);
 
@@ -280,30 +283,40 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
       </div>
 
       {/* Body */}
-      <div style={{ padding: '6px 10px 8px' }}>
-        {/* Name */}
-        {name && <div style={{ marginBottom: '3px', opacity: 0.9 }}>{esc(name)}</div>}
+      <div
+        style={{
+          padding: '6px 10px 8px',
+          display: 'grid',
+          gridTemplateRows: expanded ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.1s ease',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ overflow: 'hidden' }}>
+          {/* Name */}
+          {name && <div style={{ marginBottom: '3px', opacity: 0.9 }}>{esc(name)}</div>}
 
-        {/* Grid + Country/State */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px', opacity: 0.85 }}>
-          {grid && (
-            <span
-              style={{
-                fontFamily: 'var(--font-mono, monospace)',
-                fontWeight: '600',
-                fontSize: '11px',
-              }}
-            >
-              {esc(grid)}
-            </span>
-          )}
-          {grid && country && <span>·</span>}
-          {(country || state) && (
-            <span style={{ fontSize: '11px' }}>
-              {esc(country)}
-              {state ? ` · ${esc(state)}` : ''}
-            </span>
-          )}
+          {/* Grid + Country/State */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px', opacity: 0.85 }}>
+            {grid && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontWeight: '600',
+                  fontSize: '11px',
+                }}
+              >
+                {esc(grid)}
+              </span>
+            )}
+            {grid && country && <span>·</span>}
+            {(country || state) && (
+              <span style={{ fontSize: '11px' }}>
+                {esc(country)}
+                {state ? ` · ${esc(state)}` : ''}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
