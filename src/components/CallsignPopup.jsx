@@ -111,7 +111,7 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
   const state = data?.state || null;
 
   // Local time from geo-time API
-  // Priority: location prop (spot grid/coords) > callsign lookup grid > cty grid
+  // Priority: location prop (spot grid/coords) > callbook lat/lon > callbook grid > cty grid
   const [localTime, setLocalTime] = useState(null);
 
   useEffect(() => {
@@ -129,9 +129,14 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
       }
     }
 
-    // Fall back to callsign lookup grid
-    if (!targetGrid && lat == null && grid) {
-      targetGrid = grid;
+    // Fall back to callbook lat/lon first, then grid
+    if (!targetGrid && lat == null) {
+      if (data?.lat != null && data?.lon != null) {
+        lat = data.lat;
+        lon = data.lon;
+      } else if (grid) {
+        targetGrid = grid;
+      }
     }
 
     // No location data at all — skip
@@ -171,7 +176,7 @@ function CallsignPopup({ anchorRef, call, onClose, popupHeightRef, location }) {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [location, grid]);
+  }, [location, grid, data]);
 
   const handleCallbookClick = (e) => {
     e.preventDefault();
