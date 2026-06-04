@@ -583,7 +583,7 @@ module.exports = function (app, ctx) {
         iota: get('iota') || '',
         lotw: get('lotw') || '',
         qsl: get('qsl') || '',
-        source: 'hamqth',
+        source: 'hamqth-xml',
       };
 
       logDebug(`[HamQTH] ${callsign}: ${result.lat.toFixed(4)}, ${result.lon.toFixed(4)}`);
@@ -606,11 +606,16 @@ module.exports = function (app, ctx) {
       if (!response.ok) return null;
 
       const data = await response.json();
-      if (!data?.lat || !data?.lng) return null;
+      if (data.lat == null || data.lng == null) return null;
 
       // Validate callsign — HamQTH DXCC API sometimes returns wrong results; retry once
-      if (data.callsign && data.callsign !== callsign && !_retried) {
+      const mismatched = data.callsign && data.callsign !== callsign;
+      if (mismatched && !_retried) {
         logDebug(`[HamQTH DXCC] Mismatch for ${callsign}: got ${data.callsign}, retrying...`);
+        return hamqthLookup(callsign, true);
+      }
+      if (!data.callsign && !_retried) {
+        logDebug(`[HamQTH DXCC] Missing callsign in response, retrying...`);
         return hamqthLookup(callsign, true);
       }
 
@@ -621,7 +626,7 @@ module.exports = function (app, ctx) {
         country: data.name || 'Unknown',
         cqZone: data.waz ? String(parseInt(data.waz, 10)) : '',
         ituZone: data.itu ? String(parseInt(data.itu, 10)) : '',
-        source: 'hamqth',
+        source: 'hamqth-dxcc',
       };
     } catch (err) {
       if (err.name !== 'AbortError') {
@@ -966,7 +971,6 @@ module.exports = function (app, ctx) {
 
     // Comprehensive prefix to grid mapping
     // Uses typical/central grid for each prefix area
-    // Comprehensive prefix to grid mapping
     // Based on ITU allocations and DXCC entity list (~340 entities)
     // Grid squares are approximate center of each entity
     const prefixGrids = {
@@ -1966,7 +1970,7 @@ module.exports = function (app, ctx) {
                   ? 'Alaska'
                   : 'US Territory',
           estimated: true,
-          source: 'prefix-grid',
+          source: 'prefix',
         };
       }
     }
@@ -2004,7 +2008,7 @@ module.exports = function (app, ctx) {
           grid: grid,
           country: 'USA',
           estimated: true,
-          source: 'prefix-grid',
+          source: 'prefix',
         };
       }
     }
@@ -2021,7 +2025,7 @@ module.exports = function (app, ctx) {
         grid: null,
         country: ctyResult.entity || 'Unknown',
         estimated: true,
-        source: 'cty.dat',
+        source: 'cty-dat',
       };
     }
 
@@ -2039,7 +2043,7 @@ module.exports = function (app, ctx) {
             grid: prefixGrids[prefix],
             country: getCountryFromPrefix(prefix),
             estimated: true,
-            source: 'prefix-grid',
+            source: 'prefix',
           };
         }
       }
@@ -2085,7 +2089,7 @@ module.exports = function (app, ctx) {
           grid: firstCharGrids[firstChar],
           country: 'Unknown',
           estimated: true,
-          source: 'prefix-grid',
+          source: 'prefix',
         };
       }
     }
