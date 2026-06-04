@@ -5,9 +5,8 @@
  * data shape: { callsign, name, grid, country, state, county,
  *               lat, lon, cqZone, ituZone, geoloc, source }
  *
- * Uses an in-memory LRU cache (max 500 entries, 24h TTL) to avoid
- * redundant requests. Falls back gracefully to ctyLookup data if the
- * API is unavailable.
+ * Uses an in-memory cache to avoid redundant requests.
+ * Falls back gracefully to ctyLookup data if the API is unavailable.
  *
  * Usage:
  *   const { data, loading } = useCallsignLookup('K1ABC');
@@ -20,64 +19,18 @@ import { extractBaseCall } from '../../components/CallsignLink.jsx';
 // TTL: 24 hours (matches server-side cache TTL)
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-// LRU cache: Map keeps insertion order; first key = least recently used.
-const cache = new Map(); // callsign → { data, timestamp }
-const CACHE_MAX = 500;
-
-function setCachedCall(callsign, data) {
-  // Evict expired entries first
-  const now = Date.now();
-  for (const [key, entry] of cache) {
-    if (now - entry.timestamp > CACHE_TTL_MS) {
-      cache.delete(key);
-    }
-  }
-
-  // Move existing entry to end (most recently used)
-  if (cache.has(callsign)) {
-    const entry = cache.get(callsign);
-    cache.delete(callsign);
-  }
-
-  // Evict LRU if at cap
-  if (cache.size >= CACHE_MAX) {
-    const lruKey = cache.keys().next().value;
-    if (lruKey) cache.delete(lruKey);
-  }
-
-  cache.set(callsign, { data, timestamp: Date.now() });
-}
-
-function getCachedCall(callsign) {
-  const entry = cache.get(callsign);
-  if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-    cache.delete(callsign);
-    return null;
-  }
-  // Move to end = most recently used (LRU)
-  cache.delete(callsign);
-  cache.set(callsign, entry);
-  return entry;
-}
+// In-memory cache keyed by callsign
+const cache = new Map();
 
 export default function useCallsignLookup(call) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const mountedRef = useRef(true);
-  const inFlight = useRef(new Set());
-
-  // Cleanup on unmount — prevents state updates after unmount
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const fetchInProgress = useRef(false);
 
   const fetchCall = useCallback(async (callsign) => {
-    if (!callsign || inFlight.current.has(callsign) || !mountedRef.current) return;
-    inFlight.current.add(callsign);
+    if (!callsign || fetchInProgress.current) return;
+    fetchInProgress.current = true;
     setLoading(true);
     setError(null);
 
@@ -85,9 +38,8 @@ export default function useCallsignLookup(call) {
       const res = await apiFetch(`/api/callsign/${encodeURIComponent(callsign)}`, {
         signal: AbortSignal.timeout(5000),
       });
-      if (!mountedRef.current) return;
-
       if (!res) {
+        // Backoff — don't treat as error
         setData(null);
         setLoading(false);
         return;
@@ -99,19 +51,15 @@ export default function useCallsignLookup(call) {
         return;
       }
       const result = await res.json();
-      if (!mountedRef.current) return;
-
       setData(result);
-      setCachedCall(callsign, result);
+      cache.set(callsign, { data: result, timestamp: Date.now() });
     } catch (err) {
-      if (!mountedRef.current) return;
       if (err.name !== 'AbortError') {
         setError(err.message);
       }
     } finally {
-      if (!mountedRef.current) return;
       setLoading(false);
-      inFlight.current.delete(callsign);
+      fetchInProgress.current = false;
     }
   }, []);
 
@@ -119,8 +67,8 @@ export default function useCallsignLookup(call) {
     const baseCall = extractBaseCall(call);
     if (!baseCall) return;
 
-    const cached = getCachedCall(baseCall);
-    if (cached) {
+    const cached = cache.get(baseCall);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       setData(cached.data);
       setLoading(false);
       return;
