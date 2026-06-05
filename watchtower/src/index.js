@@ -23,6 +23,22 @@
  *   - PROBE_TIMEOUT_MS      (default 8000)
  */
 
+// Railway project + service + environment IDs. The Worker fetches logs
+// from these on `down` flips so the Discord alert carries the last ~40
+// lines of context. Tokens are env-scoped (RAILWAY_TOKEN_STAGING /
+// RAILWAY_TOKEN_PRODUCTION) so the Worker only has access to the env
+// it's actually probing.
+const RAILWAY_PROJECT_ID = 'af7b55dd-fcf9-4ae3-bca2-51d2e5b31fac';
+const RAILWAY_SERVICE_IDS = {
+  openhamclock: '3570cbe7-1631-4341-808a-f08cbe6ecb9b',
+  proppy: '0b08af50-4f0e-42cc-b6df-707815d51322',
+  spider: 'ac00d18b-b85d-4892-8f4e-f3cc91acc112',
+};
+const RAILWAY_ENV_IDS = {
+  production: '007069ba-155a-4927-8670-ac2ab9161bb0',
+  staging: 'effc7eee-99b8-4af2-9679-2868a1d73f05',
+};
+
 const SERVICES = [
   {
     name: 'openhamclock',
@@ -32,16 +48,19 @@ const SERVICES = [
     // https://openhamclock.com once CF Bot Fight stops 429ing the worker.
     url: 'https://openhamclock-staging.up.railway.app/api/health',
     parse: parseOpenHamClock, // returns { aggregate, subsystems: {fletcher, rbn, ...} }
+    railwayEnv: 'staging',
   },
   {
     name: 'proppy',
     url: 'https://proppy-production.up.railway.app/api/version',
     parse: parseSimple200,
+    railwayEnv: 'production',
   },
   {
     name: 'spider',
     url: 'https://spider-production-1ec7.up.railway.app/health',
     parse: parseSimple200,
+    railwayEnv: 'production',
   },
 ];
 
@@ -148,9 +167,97 @@ function describeFlip(prev, curr) {
   return 'changed';
 }
 
+// ── Railway logs ───────────────────────────────────────────────────────────
+// On `down` flips we attach the last ~40 log lines from Railway's GraphQL
+// API to the Discord embed so on-call has context without having to log
+// in to Railway. Tokens are env-scoped so the Worker can only see logs for
+// the environment it's actually monitoring.
+
+const RAILWAY_API = 'https://backboard.railway.com/graphql/v2';
+
+async function railwayGraphQL(token, query, variables) {
+  try {
+    const res = await fetch(RAILWAY_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (!res.ok) return { errors: [`HTTP ${res.status}`] };
+    return res.json();
+  } catch (err) {
+    return { errors: [err.message || String(err)] };
+  }
+}
+
+async function fetchRailwayLogs(env, serviceName, railwayEnv, limit = 40) {
+  const tokenKey = railwayEnv === 'staging' ? 'RAILWAY_TOKEN_STAGING' : 'RAILWAY_TOKEN_PRODUCTION';
+  const token = env[tokenKey];
+  const serviceId = RAILWAY_SERVICE_IDS[serviceName];
+  const environmentId = RAILWAY_ENV_IDS[railwayEnv];
+  if (!token || !serviceId || !environmentId) return null;
+
+  // Step 1: find the latest deployment for this service+env.
+  const deplResp = await railwayGraphQL(
+    token,
+    `query Latest($projectId: String!, $environmentId: String!, $serviceId: String!) {
+       deployments(input: { projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId }, first: 1) {
+         edges { node { id } }
+       }
+     }`,
+    { projectId: RAILWAY_PROJECT_ID, environmentId, serviceId },
+  );
+  const deploymentId = deplResp?.data?.deployments?.edges?.[0]?.node?.id;
+  if (!deploymentId) {
+    return { error: deplResp?.errors?.[0]?.message || deplResp?.errors?.[0] || 'no deployment found' };
+  }
+
+  // Step 2: fetch logs for that deployment.
+  const logsResp = await railwayGraphQL(
+    token,
+    `query Logs($deploymentId: String!, $limit: Int!) {
+       deploymentLogs(deploymentId: $deploymentId, limit: $limit) {
+         message
+         timestamp
+         severity
+       }
+     }`,
+    { deploymentId, limit },
+  );
+  const lines = logsResp?.data?.deploymentLogs;
+  if (!Array.isArray(lines)) {
+    return { error: logsResp?.errors?.[0]?.message || logsResp?.errors?.[0] || 'no logs returned', deploymentId };
+  }
+  return { lines, deploymentId };
+}
+
+function railwayDashboardUrl(serviceName, railwayEnv) {
+  const serviceId = RAILWAY_SERVICE_IDS[serviceName];
+  const environmentId = RAILWAY_ENV_IDS[railwayEnv];
+  if (!serviceId || !environmentId) return null;
+  return `https://railway.com/project/${RAILWAY_PROJECT_ID}/service/${serviceId}?environmentId=${environmentId}`;
+}
+
+function formatLogTail(result) {
+  if (!result) return null; // no token configured
+  if (result.error) return `_Could not fetch logs: ${result.error}_`;
+  const lines = result.lines || [];
+  if (lines.length === 0) return '_No log lines returned_';
+  // Trim each line, drop control chars, fit inside Discord's 4000-char
+  // description budget once wrapped in ```.
+  const body = lines
+    .map(
+      (l) =>
+        `${l.timestamp ? l.timestamp.slice(11, 19) + ' ' : ''}${(l.message || '').replace(/\[[0-9;]*m/g, '').trimEnd()}`,
+    )
+    .join('\n');
+  const MAX = 3800;
+  const truncated = body.length > MAX ? body.slice(body.length - MAX) : body;
+  return '```\n' + truncated + '\n```';
+}
+
 // ── Discord post ───────────────────────────────────────────────────────────
 
-async function postFlip(env, service, subsystem, prev, curr) {
+async function postFlip(env, service, subsystem, prev, curr, serviceConfig) {
   if (!env.DISCORD_WEBHOOK_URL) return;
 
   const direction = describeFlip(prev, curr);
@@ -174,6 +281,17 @@ async function postFlip(env, service, subsystem, prev, curr) {
   };
   if (curr.detail) embed.fields.push({ name: 'Detail', value: curr.detail.slice(0, 1024) });
   if (prev.since) embed.fields.push({ name: 'Held since', value: prev.since, inline: true });
+
+  // Attach Railway log tail + dashboard link on down transitions for the
+  // *aggregate* probe only. Subsystem flips share the parent's service so
+  // logs would just be the same parent logs duplicated; skip them.
+  if (curr.status === 'down' && subsystem === 'aggregate' && serviceConfig?.railwayEnv) {
+    const dashUrl = railwayDashboardUrl(service, serviceConfig.railwayEnv);
+    if (dashUrl) embed.fields.push({ name: 'Railway', value: `[View logs ↗](${dashUrl})`, inline: true });
+    const logResult = await fetchRailwayLogs(env, service, serviceConfig.railwayEnv);
+    const tail = formatLogTail(logResult);
+    if (tail) embed.description = tail;
+  }
 
   await fetch(env.DISCORD_WEBHOOK_URL, {
     method: 'POST',
@@ -250,7 +368,13 @@ async function tick(env, opts = {}) {
           // Silence flips that touch 'unknown' on either side. unknown
           // is "we don't know yet", not a state worth paging on.
           if (confirmed.status !== 'unknown' && r.status !== 'unknown') {
-            flips.push({ service: service.name, subsystem: r.subsystem, prev: confirmed, curr: r });
+            flips.push({
+              service: service.name,
+              subsystem: r.subsystem,
+              prev: confirmed,
+              curr: r,
+              serviceConfig: service,
+            });
           }
         }
         // else: still inside the debounce window, no KV write, no alert.
@@ -266,7 +390,7 @@ async function tick(env, opts = {}) {
   }
 
   for (const f of flips) {
-    await postFlip(env, f.service, f.subsystem, f.prev, f.curr);
+    await postFlip(env, f.service, f.subsystem, f.prev, f.curr, f.serviceConfig);
   }
 
   // Daily heartbeat at 09:00 UTC. We use a KV-stored ISO date so we only
@@ -311,10 +435,15 @@ export default {
       const service = url.searchParams.get('service') || 'watchtower';
       const subsystem = url.searchParams.get('subsystem') || 'self-test';
       const status = url.searchParams.get('status') || 'down';
+      const railwayEnv = url.searchParams.get('env') || null;
       const prev = { status: 'ok', detail: 'test', since: new Date().toISOString() };
       const curr = { status, detail: 'forced via /test-flip' };
-      await postFlip(env, service, subsystem, prev, curr);
-      return Response.json({ ok: true, posted: { service, subsystem, prev, curr } });
+      // If ?env=staging|production is passed and we recognize the service,
+      // exercise the Railway log fetch path so the test embed carries logs
+      // just like a real down flip would.
+      const serviceConfig = railwayEnv && RAILWAY_SERVICE_IDS[service] ? { name: service, railwayEnv } : null;
+      await postFlip(env, service, subsystem, prev, curr, serviceConfig);
+      return Response.json({ ok: true, posted: { service, subsystem, prev, curr, serviceConfig } });
     }
 
     if (url.pathname === '/state') {
