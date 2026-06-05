@@ -1,6 +1,6 @@
 /**
  * Convert classical Two-Line Element (TLE) set to an OMM-shaped JSON object.
- * Used by the satellite resolver to simulute OMM data from TLE/3LE only data sources.
+ * Used by the satellite resolver to simulate OMM data from TLE/3LE only data sources.
  *
  * TLE column layout reference: https://celestrak.org/NORAD/documentation/tle-fmt.php
  * OMM format reference:        https://celestrak.org/NORAD/documentation/gp-data-formats.php
@@ -139,12 +139,6 @@ function parseTleBlock(text) {
   const out = [];
 
   const sm = new TleLineParserStateMachine((line0, line1, line2) => {
-    //let debugStr = '[Satellites] ********************************';
-    //debugStr += '\nline0 = ' + line0;
-    //debugStr += '\nline1 = ' + line1;
-    //debugStr += '\nline2 = ' + line2;
-    //console.log(debugStr);
-
     // operation on state machine data emit
     const omm = tleToOmm(line0, line1, line2);
     if (omm) out.push(omm);

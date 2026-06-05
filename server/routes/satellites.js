@@ -155,11 +155,11 @@ module.exports = function (app, ctx) {
     return { httpStatusCode, ommJson };
   };
 
-  // AMSAT fallback - TLE
+  // AMSAT fallback - TLE based
   // Single concatenated-TLE feed at amsat.org. Covers only amateur satellites.
   // Used as a fallback for CelesTrak so that we keep resolving satellites when
   // celestrak.org is unreachable, historically a recurring failure mode on cloud hosts (#1057).
-  const fetchTleFromAmsat = async () => {
+  const fetchOmmFromAmsat_TleBased = async () => {
     let httpStatusCode = 0;
     let ommArray = [];
     const controller = new AbortController();
@@ -192,11 +192,11 @@ module.exports = function (app, ctx) {
     return { httpStatusCode, ommArray };
   };
 
-  // SatNOGS individual fallback - TLE
+  // SatNOGS individual fallback - TLE based
   // SatNOGS DB exposes TLE based data wrapped in a JSON format.
   // The dataset has previously been shown to be questionable, and may contain stale or inaccurate data,
   // or data for satellites that have decayed and are no longer in orbit.
-  const fetchTleFromSatnogsIndividual = async (noradId) => {
+  const fetchOmmFromSatnogsIndividual_TleBased = async (noradId) => {
     let httpStatusCode = 0;
     let omm = null;
     const controller = new AbortController();
@@ -396,8 +396,27 @@ module.exports = function (app, ctx) {
   // any satellites downloaded that are part of the target list HAM_SATELLITES
   let ommUnusedCache = {};
 
-  // Note that NORAD releases updates approximately daily, the optimal duration would be 50% on a chained distribution however to reduce
-  // traffic 24 hours has been chosen since they is little accuracy benefit to more frequent updates.
+  // Analysis of data age and refresh periods:
+  // NORAD releases updates approximately daily, P' = 24 hours.
+  //
+  // There exists a chained distribution between nodes: NORAD (Space-Track) → CelesTrak (when enabled) → user.
+  // Assuming each hop is phase‑uncorrelated, that the number of hops = n, and the sample period at each node = P,
+  // the accumulated end‑user data age is D = [0, P' + n * P],
+  // with mean = (P' + n * P) / 2 and SD = sqrt((P'^2 + n * P^2) / 12).
+  //
+  // If each node chooses P = P' = 24 hours and n = 2, then D = [0, 72] hours,
+  // with mean = 36 hours and SD = 12 hours.
+  // As can be seen, choosing P = P' accumulates data age with a significant worst case.
+  //
+  // Accordingly, it is usual for each node to set its sampling period P to be a fraction of P'.
+  // For instance, if P = P' / 2 = 12 hours and n = 2, then D = [0, 48] hours,
+  // with mean = 24 hours and SD ≈ 8.5 hours.
+  //
+  // We cannot control the refresh period of upstream sources (e.g., CelesTrak), but it is assumed
+  // they already sample at P < P'.
+  //
+  // Even with this in mind, however, we SHALL set our P = P' = 24 hours, since there is significant
+  // cost to us in unnecessary frequent data refresh.
   const OMM_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours, period after which OMM data considered stale
   const SPACE_TRACK_BACKOFF = 120 * 60 * 1000; // 2 hour, any satellite not allowed to repeat query to Space-Track within this period
   const CELESTRAK_BACKOFF = 120 * 60 * 1000; // 2 hour, any satellite not allowed to repeat query to CelesTrak within this period
@@ -635,7 +654,7 @@ module.exports = function (app, ctx) {
 
     AMSAT_FETCH: async () => {
       try {
-        const { httpStatusCode, ommArray } = await fetchTleFromAmsat();
+        const { httpStatusCode, ommArray } = await fetchOmmFromAmsat_TleBased();
         if (httpStatusCode === 200 && ommArray.length > 0) {
           appendDataToOmmCache(ommArray);
         } else if (httpStatusCode === 0 || httpStatusCode >= 500) {
@@ -671,7 +690,7 @@ module.exports = function (app, ctx) {
         if (Array.isArray(noradsToDownload)) {
           throw new Error('[Satellites] SATNOGS_INDIVIDUAL_FETCH: noradsToDownload should not be array');
         }
-        const { httpStatusCode, omm } = await fetchTleFromSatnogsIndividual(noradsToDownload);
+        const { httpStatusCode, omm } = await fetchOmmFromSatnogsIndividual_TleBased(noradsToDownload);
         if (httpStatusCode === 200 && omm) {
           appendDataToOmmCache([omm]);
         } else if (httpStatusCode === 0 || httpStatusCode >= 500) {

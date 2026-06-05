@@ -52,6 +52,14 @@ AO-27
 2 22825  98.6883 222.0623 0009234 135.0556 225.1375 14.30938483705069
 `;
 
+  // TLE sample with no name line
+  const TLE_SAMPLE = `
+1 07530U 74089B   26154.66963161 -.00000047  00000-0 -29295-5 0  9994
+2 07530 101.9902 167.7751 0012419 155.3130 322.4092 12.53697881358826
+1 22825U 93061C   26154.64439705  .00000131  00000-0  66973-4 0  9994
+2 22825  98.6883 222.0623 0009234 135.0556 225.1375 14.30938483705069
+`;
+
   it('should parse sample 3LE text and extract satellite data', () => {
     const satelliteData = parseTleBlock(AMSAT_daily_bulletin);
     expect(satelliteData).toBeInstanceOf(Array);
@@ -67,5 +75,13 @@ AO-27
     expect(satelliteData.length).toEqual(2); // Only AO-07 and AO-27 should be parsed, UO-11 is corrupted
     expect(satelliteData.some((item) => item.OBJECT_NAME === 'AO-07')).toBe(true);
     expect(satelliteData.some((item) => item.OBJECT_NAME === 'AO-27')).toBe(true);
+  });
+
+  it('should gracefully extract data from TLE block that has no name lines', () => {
+    const satelliteData = parseTleBlock(TLE_SAMPLE);
+    expect(satelliteData).toBeInstanceOf(Array);
+    expect(satelliteData.length).toEqual(2);
+    expect(satelliteData.some((item) => item.NORAD_CAT_ID === 7530)).toBe(true);
+    expect(satelliteData.some((item) => item.NORAD_CAT_ID === 22825)).toBe(true);
   });
 });
