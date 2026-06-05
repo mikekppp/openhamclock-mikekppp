@@ -387,7 +387,7 @@ export const DXClusterPanel = ({
                     color="var(--text-primary)"
                     fontWeight="700"
                     onPopup={showPopup}
-                    location={spot.dxGrid ? { grid: spot.dxGrid } : undefined}
+                    location={{ grid: spot.dxGrid, lat: spot.dxLat, lon: spot.dxLon }}
                   />
                 </div>
                 <div
@@ -428,6 +428,7 @@ export const DXClusterPanel = ({
                       color="var(--text-muted)"
                       fontSize="10px"
                       onPopup={showPopup}
+                      location={{ grid: spot.spotterGrid, lat: spot.spotterLat, lon: spot.spotterLon }}
                     />
                   </div>
                 )}
