@@ -116,15 +116,28 @@ function parseSimple200() {
 
 // ── State + transitions ────────────────────────────────────────────────────
 
-async function readPrev(env, service, subsystem) {
+// Status must hold for this long before a flip is confirmed and posted.
+// Tuned wider than a typical Railway deploy window (~30-60s) so deploy
+// churn doesn't generate spurious alerts. Real outages of 2+ min still
+// alert, only delayed by this much.
+const DEBOUNCE_MS = 90 * 1000;
+
+async function readState(env, service, subsystem) {
   const key = `${service}.${subsystem}`;
   const raw = await env.WATCHTOWER_STATE.get(key);
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return { confirmed: null, pending: null };
+  const parsed = JSON.parse(raw);
+  // Migrate old flat format ({status, detail, since}) to new wrapper
+  // ({confirmed, pending}). Old entries are treated as already-confirmed.
+  if (parsed.confirmed === undefined && parsed.status !== undefined) {
+    return { confirmed: parsed, pending: null };
+  }
+  return { confirmed: parsed.confirmed || null, pending: parsed.pending || null };
 }
 
-async function writeCurrent(env, service, subsystem, status, detail) {
+async function writeState(env, service, subsystem, confirmed, pending) {
   const key = `${service}.${subsystem}`;
-  await env.WATCHTOWER_STATE.put(key, JSON.stringify({ status, detail, since: new Date().toISOString() }));
+  await env.WATCHTOWER_STATE.put(key, JSON.stringify({ confirmed, pending }));
 }
 
 function describeFlip(prev, curr) {
@@ -205,21 +218,49 @@ async function tick(env, opts = {}) {
   const flips = [];
   const snapshot = {};
 
+  const nowIso = new Date().toISOString();
+
   for (const service of SERVICES) {
     const results = await probe(service, timeoutMs);
     for (const r of results) {
-      const prev = (await readPrev(env, service.name, r.subsystem)) || { status: 'unknown', detail: null };
       snapshot[`${service.name}.${r.subsystem}`] = r;
-      // Only post a flip when status actually changes AND we've seen the
-      // prior status before (skips boot-time unknown → ok noise).
-      if (prev.status !== r.status && prev.status !== 'unknown') {
-        flips.push({ service: service.name, subsystem: r.subsystem, prev, curr: r });
+      const { confirmed, pending } = await readState(env, service.name, r.subsystem);
+
+      // First observation ever: seed confirmed, no alert.
+      if (!confirmed) {
+        await writeState(env, service.name, r.subsystem, { status: r.status, detail: r.detail, since: nowIso }, null);
+        continue;
       }
-      // CF KV free tier caps writes at 1000/day. We only write when the
-      // status actually changes (or on first-ever observation) to stay well
-      // inside that budget. Steady-state writes ≈ 0.
-      if (prev.status !== r.status) {
-        await writeCurrent(env, service.name, r.subsystem, r.status, r.detail);
+
+      // Stable: current observation matches the confirmed status. Clear
+      // any pending candidate that was being debounced (this is the deploy
+      // recovery case — pending=down, recovered to ok within 90s).
+      if (r.status === confirmed.status) {
+        if (pending) await writeState(env, service.name, r.subsystem, confirmed, null);
+        continue;
+      }
+
+      // Differs from confirmed: either continue an existing pending or
+      // start a new one.
+      if (pending && pending.status === r.status) {
+        const heldMs = Date.now() - new Date(pending.firstSeen).getTime();
+        if (heldMs >= DEBOUNCE_MS) {
+          const newConfirmed = { status: r.status, detail: r.detail, since: pending.firstSeen };
+          await writeState(env, service.name, r.subsystem, newConfirmed, null);
+          // Silence flips that touch 'unknown' on either side. unknown
+          // is "we don't know yet", not a state worth paging on.
+          if (confirmed.status !== 'unknown' && r.status !== 'unknown') {
+            flips.push({ service: service.name, subsystem: r.subsystem, prev: confirmed, curr: r });
+          }
+        }
+        // else: still inside the debounce window, no KV write, no alert.
+      } else {
+        // New (or different) pending candidate. One KV write to record it.
+        await writeState(env, service.name, r.subsystem, confirmed, {
+          status: r.status,
+          detail: r.detail,
+          firstSeen: nowIso,
+        });
       }
     }
   }
@@ -281,7 +322,13 @@ export default {
       const list = await env.WATCHTOWER_STATE.list();
       const state = {};
       for (const k of list.keys) {
-        state[k.name] = JSON.parse((await env.WATCHTOWER_STATE.get(k.name)) || 'null');
+        const raw = (await env.WATCHTOWER_STATE.get(k.name)) || 'null';
+        try {
+          state[k.name] = JSON.parse(raw);
+        } catch {
+          // Some keys hold plain strings (e.g. lastHeartbeatDay).
+          state[k.name] = raw;
+        }
       }
       return Response.json(state);
     }
