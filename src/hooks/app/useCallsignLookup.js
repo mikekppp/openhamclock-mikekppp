@@ -19,8 +19,38 @@ import { extractBaseCall } from '../../components/CallsignLink.jsx';
 // TTL: 24 hours (matches server-side cache TTL)
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-// In-memory cache keyed by callsign
-const cache = new Map();
+// LRU cache: Map keeps insertion order; first key = least recently used.
+const cache = new Map(); // callsign → { data, timestamp }
+const CACHE_MAX = 500;
+
+function setCachedCall(callsign, data) {
+  // Move existing entry to end (most recently used)
+  if (cache.has(callsign)) {
+    const entry = cache.get(callsign);
+    cache.delete(callsign);
+  }
+
+  // Evict LRU if at cap
+  if (cache.size >= CACHE_MAX) {
+    const lruKey = cache.keys().next().value;
+    if (lruKey) cache.delete(lruKey);
+  }
+
+  cache.set(callsign, { data, timestamp: Date.now() });
+}
+
+function getCachedCall(callsign) {
+  const entry = cache.get(callsign);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    cache.delete(callsign);
+    return null;
+  }
+  // Move to end = most recently used (LRU)
+  cache.delete(callsign);
+  cache.set(callsign, entry);
+  return entry;
+}
 
 export default function useCallsignLookup(call) {
   const [data, setData] = useState(null);
@@ -52,7 +82,7 @@ export default function useCallsignLookup(call) {
       }
       const result = await res.json();
       setData(result);
-      cache.set(callsign, { data: result, timestamp: Date.now() });
+      setCachedCall(callsign, result);
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(err.message);
@@ -67,8 +97,8 @@ export default function useCallsignLookup(call) {
     const baseCall = extractBaseCall(call);
     if (!baseCall) return;
 
-    const cached = cache.get(baseCall);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    const cached = getCachedCall(baseCall);
+    if (cached) {
       setData(cached.data);
       setLoading(false);
       return;
