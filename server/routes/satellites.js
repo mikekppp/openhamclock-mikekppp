@@ -661,7 +661,7 @@ module.exports = function (app, ctx) {
       );
       if (stillStale.length === 0) return 'START';
       const sat = stillStale[0];
-      sat.backoffSatnogsUntil = now + +60 * 60 * 1000; // 1 hour
+      sat.backoffSatnogsUntil = now + 60 * 60 * 1000; // 1 hour
       noradsToDownload = sat.norad;
       return 'SATNOGS_INDIVIDUAL_FETCH';
     },
