@@ -268,6 +268,11 @@ require('./server/routes/config-routes')(app, ctx);
 require('./server/routes/geo-time')(app, ctx);
 require('./server/routes/admin')(app, ctx);
 
+// Subsystem health background refresher (read by /api/health).
+const health = require('./server/health');
+ctx.getSubsystemsHealth = health.getSubsystems;
+health.start(ctx);
+
 // ── Catch-all for SPA ──
 app.get('*', (req, res) => {
   const distIndex = path.join(ROOT_DIR, 'dist', 'index.html');

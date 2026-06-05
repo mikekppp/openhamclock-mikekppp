@@ -388,6 +388,8 @@ module.exports = function (app, ctx) {
   // note, the size of ommCache is not expected to grow beyond the size of the target list
   let ommCache = {};
   let ommCacheTimestamp = 0;
+  // Exposed for server/health.js — read by the subsystem health snapshot.
+  ctx.getSatellitesLastFetchAt = () => (ommCacheTimestamp > 0 ? ommCacheTimestamp : null);
 
   // record of satellites whose data is known but are not being tracked,
   // note that the size of ommUnusedCache is not expected to grow beyond the intersection size of downloaded groups minus
