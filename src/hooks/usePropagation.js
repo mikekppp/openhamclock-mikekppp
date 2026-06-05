@@ -89,10 +89,16 @@ export const usePropagation = (deLocation, dxLocation, propagationConfig = {}) =
           );
         }
       } catch (err) {
-        // Expected when /wasm/p533.mjs is missing (self-hoster) or the 10 MB
-        // coefficient download fails — keep the REST data we already rendered.
+        // Expected when /wasm/p533.mjs is missing (self-hoster who hasn't run
+        // scripts/fetch-wasm.sh) or the 10 MB coefficient download fails. Keep
+        // the REST data we already rendered. Warn so a devtools-savvy user can
+        // see why the badge is stuck on EST without needing to read this file.
         if (!wasmAbort.signal.aborted) {
-          console.debug('[usePropagation] WASM engine skipped:', err.message);
+          console.warn(
+            '[usePropagation] WASM engine unavailable, falling back to EST heuristic. ' +
+              'Self-hosters: run "bash scripts/fetch-wasm.sh && npm run build" to install the WASM bundle. ' +
+              `(${err.message})`,
+          );
         }
       }
     };
