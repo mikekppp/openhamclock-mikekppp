@@ -54,6 +54,7 @@ import useLocalInstall from './hooks/app/useLocalInstall';
 import useVersionCheck from './hooks/app/useVersionCheck';
 import usePresence from './hooks/app/usePresence';
 import useAudioAlerts from './hooks/app/useAudioAlerts';
+import { useSatelliteAnnouncements } from './hooks/app/useSatelliteAnnouncements';
 import WhatsNew from './components/WhatsNew.jsx';
 import { initCtyLookup } from './utils/ctyLookup.js';
 import { getAllLayers } from './plugins/layerRegistry.js';
@@ -326,6 +327,7 @@ const App = () => {
   const filterState = useSatelliteFilterState();
   const { satelliteFilters, setSatelliteFilters } = filterState;
   const satellites = useSatellites(config.location, config.satellite, satelliteFilters);
+  const { riseAnnouncement, setAnnouncement: satelliteSetAnnouncement } = useSatelliteAnnouncements(satellites.data);
   const localWeather = useWeather(config.location, config.allUnits);
   const dxWeather = useWeather(dxLocation, config.allUnits);
   const localAlerts = useWeatherAlerts(config.location);
@@ -804,6 +806,14 @@ const App = () => {
         onClose={() => setShowWwbotaFilters(false)}
       />
       <WhatsNew showWhatsNew={config.showWhatsNew} />
+      {/* Assertive: satellite rising above horizon is time-critical for a ham operator */}
+      <div className="visually-hidden" aria-live="assertive" aria-atomic="true" data-testid="satellite-rise-announcer">
+        {riseAnnouncement}
+      </div>
+      {/* Polite: satellite setting is informational */}
+      <div className="visually-hidden" aria-live="polite" aria-atomic="true" data-testid="satellite-set-announcer">
+        {satelliteSetAnnouncement}
+      </div>
     </main>
   );
 };
