@@ -321,6 +321,8 @@
   "pskReporterPanel.psk.refreshTooltip": "Reconnect to PSKReporter",
   "pskReporterPanel.psk.setCallsign": "Set your callsign in Settings to see reports",
   "pskReporterPanel.psk.waitingForSpots": "Waiting for spots... (TX to see reports)",
+  "pskReporterPanel.tabs.tablistLabel": "PSK Reporter tabs",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "WSJT-X tabs",
   "pskReporterPanel.tabs.heard": "Heard ({{count}})",
   "pskReporterPanel.tabs.heardTooltip": "▲ Stations hearing your signal",
   "pskReporterPanel.tabs.hearing": "Hearing ({{count}})",

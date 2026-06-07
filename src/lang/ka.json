@@ -317,6 +317,8 @@
   "pskReporterPanel.psk.refreshTooltip": "ხელახალი კავშირი PSKReporter-თან",
   "pskReporterPanel.psk.setCallsign": "დააყენეთ სახელსახმო პარამეტრებში ანგარიშების სანახავად",
   "pskReporterPanel.psk.waitingForSpots": "სპოტების მოლოდინი... (TX ანგარიშების სანახავად)",
+  "pskReporterPanel.tabs.tablistLabel": "PSK Reporter-ჩანაწერები",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "WSJT-X-ჩანაწერები",
   "pskReporterPanel.tabs.heard": "ისმენენ ({{count}})",
   "pskReporterPanel.tabs.heardTooltip": "▲ სადგურები, რომლებიც გისმენენ",
   "pskReporterPanel.tabs.hearing": "ვისმენ ({{count}})",

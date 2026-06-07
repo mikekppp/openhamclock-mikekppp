@@ -317,6 +317,8 @@
   "pskReporterPanel.psk.refreshTooltip": "Reconectar a PSKReporter",
   "pskReporterPanel.psk.setCallsign": "Configura tu indicativo en Configuración para ver informes",
   "pskReporterPanel.psk.waitingForSpots": "Esperando spots... (TX para ver informes)",
+  "pskReporterPanel.tabs.tablistLabel": "Pestañas de PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "Pestañas de WSJT-X",
   "pskReporterPanel.tabs.heard": "Oído ({{count}})",
   "pskReporterPanel.tabs.heardTooltip": "▲ Estaciones que escuchan tu señal",
   "pskReporterPanel.tabs.hearing": "Oyendo ({{count}})",

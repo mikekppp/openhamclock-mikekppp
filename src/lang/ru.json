@@ -317,6 +317,8 @@
   "pskReporterPanel.psk.refreshTooltip": "Переподключиться к PSKReporter",
   "pskReporterPanel.psk.setCallsign": "Укажите позывной в настройках для просмотра отчётов",
   "pskReporterPanel.psk.waitingForSpots": "Ожидание спотов... (Передавайте для получения отчётов)",
+  "pskReporterPanel.tabs.tablistLabel": "Вкладки PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "Вкладки WSJT-X",
   "pskReporterPanel.tabs.heard": "Слышат ({{count}})",
   "pskReporterPanel.tabs.heardTooltip": "▲ Станции, слышащие ваш сигнал",
   "pskReporterPanel.tabs.hearing": "Слышу ({{count}})",

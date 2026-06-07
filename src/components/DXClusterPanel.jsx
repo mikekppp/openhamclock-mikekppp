@@ -208,6 +208,7 @@ export const DXClusterPanel = ({
           <button
             onClick={onOpenFilters}
             title={t('dxClusterPanel.filterTooltip')}
+            aria-label={t('dxClusterPanel.filterTooltip')}
             style={{
               background: filterCount > 0 ? 'rgba(255, 170, 0, 0.3)' : 'rgba(100, 100, 100, 0.3)',
               border: `1px solid ${filterCount > 0 ? '#ffaa00' : '#666'}`,

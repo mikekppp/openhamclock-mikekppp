@@ -317,6 +317,8 @@
   "pskReporterPanel.psk.refreshTooltip": "重新连接 PSKReporter",
   "pskReporterPanel.psk.setCallsign": "请在设置中设置呼号以查看报告",
   "pskReporterPanel.psk.waitingForSpots": "等待监测中... (发射信号以查看报告)",
+  "pskReporterPanel.tabs.tablistLabel": "PSK Reporter 标签页",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "WSJT-X 标签页",
   "pskReporterPanel.tabs.heard": "被听到 ({{count}})",
   "pskReporterPanel.tabs.heardTooltip": "▲ 听到您的电台",
   "pskReporterPanel.tabs.hearing": "听到 ({{count}})",

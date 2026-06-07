@@ -53,7 +53,9 @@ const PSKReporterPanel = ({
     }
   });
   const PSK_TABS = ['tx', 'rx'];
+  const WSJT_X_TABS = ['decodes', 'wspr', 'qsos'];
   const pskTabRefs = useRef({});
+  const wsjtxTabRefs = useRef({});
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const s = localStorage.getItem('openhamclock_pskActiveTab');
@@ -95,6 +97,12 @@ const PSKReporterPanel = ({
       localStorage.setItem('openhamclock_pskActiveTab', v);
     } catch {}
   };
+
+  // Computed tab routing (must be after all state/setter declarations)
+  const ALL_TABS = panelMode === 'psk' ? PSK_TABS : WSJT_X_TABS;
+  const activeTabKey = panelMode === 'psk' ? activeTab : wsjtxTab;
+  const setActiveTabFn = panelMode === 'psk' ? setActiveTabPersist : setWsjtxTab;
+  const activeTabRefs = panelMode === 'psk' ? pskTabRefs : wsjtxTabRefs;
 
   // PSKReporter data from App-level hook (single SSE connection shared across app)
   const {
@@ -505,9 +513,13 @@ const PSKReporterPanel = ({
       <div style={{ gap: '4px', marginBottom: '5px', flexShrink: 0 }}>
         <div
           role="tablist"
-          aria-label={t('pskReporterPanel.tabs.tablistLabel', 'PSK Reporter tabs')}
+          aria-label={
+            panelMode === 'psk'
+              ? t('pskReporterPanel.tabs.tablistLabel', 'PSK Reporter tabs')
+              : t('pskReporterPanel.tabs.wsjtxTablistLabel', 'WSJT-X tabs')
+          }
           style={{ display: 'flex', gap: '4px' }}
-          onKeyDown={(e) => ariaTabKeyDown(e, PSK_TABS, activeTab, setActiveTabPersist, pskTabRefs)}
+          onKeyDown={(e) => ariaTabKeyDown(e, ALL_TABS, activeTabKey, setActiveTabFn, activeTabRefs)}
         >
           {panelMode === 'psk' ? (
             <>
@@ -555,6 +567,12 @@ const PSKReporterPanel = ({
           ) : (
             <>
               <button
+                role="tab"
+                id="tab-wsjtx-decodes"
+                aria-selected={wsjtxTab === 'decodes'}
+                aria-controls="panel-wsjtx-content"
+                tabIndex={wsjtxTab === 'decodes' ? 0 : -1}
+                ref={(el) => (wsjtxTabRefs.current['decodes'] = el)}
                 onClick={() => setWsjtxTab('decodes')}
                 style={subTabBtn(wsjtxTab === 'decodes', '#a78bfa')}
                 title={t('pskReporterPanel.wsjtx.decodingTooltip')}
@@ -563,6 +581,12 @@ const PSKReporterPanel = ({
               </button>
               {(isWSPRMode || wsjtxWspr.length > 0) && (
                 <button
+                  role="tab"
+                  id="tab-wsjtx-wspr"
+                  aria-selected={wsjtxTab === 'wspr'}
+                  aria-controls="panel-wsjtx-content"
+                  tabIndex={wsjtxTab === 'wspr' ? 0 : -1}
+                  ref={(el) => (wsjtxTabRefs.current['wspr'] = el)}
                   onClick={() => setWsjtxTab('wspr')}
                   style={subTabBtn(wsjtxTab === 'wspr', '#22d3ee')}
                   title="WSPR decodes received by WSJT-X"
@@ -571,6 +595,12 @@ const PSKReporterPanel = ({
                 </button>
               )}
               <button
+                role="tab"
+                id="tab-wsjtx-qsos"
+                aria-selected={wsjtxTab === 'qsos'}
+                aria-controls="panel-wsjtx-content"
+                tabIndex={wsjtxTab === 'qsos' ? 0 : -1}
+                ref={(el) => (wsjtxTabRefs.current['qsos'] = el)}
                 onClick={() => setWsjtxTab('qsos')}
                 style={subTabBtn(wsjtxTab === 'qsos', '#a78bfa')}
                 title={t('pskReporterPanel.wsjtx.qsosTooltip')}
@@ -583,9 +613,9 @@ const PSKReporterPanel = ({
       </div>
       {/* ── Content area ── */}
       <div
-        role={panelMode === 'psk' ? 'tabpanel' : undefined}
-        id={panelMode === 'psk' ? 'panel-psk-content' : undefined}
-        aria-labelledby={panelMode === 'psk' ? `tab-psk-${activeTab}` : undefined}
+        role="tabpanel"
+        id={panelMode === 'psk' ? 'panel-psk-content' : 'panel-wsjtx-content'}
+        aria-labelledby={panelMode === 'psk' ? `tab-psk-${activeTab}` : `tab-wsjtx-${wsjtxTab}`}
         style={{ flex: 1, overflow: 'auto', fontSize: '11px', fontFamily: 'var(--font-mono)' }}
       >
         {/* === PSKReporter content === */}
@@ -738,7 +768,6 @@ const PSKReporterPanel = ({
                   fontSize: '10px',
                   textAlign: 'center',
                   padding: '8px 8px',
-                  //height: '100%',
                 }}
               >
                 <div style={{ fontSize: '10px' }}>{t('pskReporterPanel.wsjtx.waiting')}</div>
