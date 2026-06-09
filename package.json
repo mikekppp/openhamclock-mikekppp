@@ -45,6 +45,7 @@
     "rss-parser": "^3.13.0",
     "satellite.js": "^6.0.0",
     "tough-cookie": "^6.0.1",
+    "prom-client": "^15.1.0",
     "ws": "^8.14.2"
   },
   "devDependencies": {
