@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ สถานีที่ได้ยินสัญญาณของคุณ",
   "pskReporterPanel.tabs.hearing": "กำลังได้ยิน ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ สถานีที่คุณได้ยิน",
+  "pskReporterPanel.tabs.tablistLabel": "แท็บ PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "แท็บ WSJT-X",
   "pskReporterPanel.time.hours": "{{hours}} ชม.",
   "pskReporterPanel.time.minutes": "{{minutes}} นาที",
   "pskReporterPanel.time.now": "ตอนนี้",

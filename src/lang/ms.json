@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ Stesen yang mendengari isyarat anda",
   "pskReporterPanel.tabs.hearing": "Mendengari ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ Stesen yang anda dengari",
+  "pskReporterPanel.tabs.tablistLabel": "Tab PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "Tab WSJT-X",
   "pskReporterPanel.time.hours": "{{hours}}j",
   "pskReporterPanel.time.minutes": "{{minutes}}m",
   "pskReporterPanel.time.now": "kini",

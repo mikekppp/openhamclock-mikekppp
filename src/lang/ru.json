@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ Станции, слышащие ваш сигнал",
   "pskReporterPanel.tabs.hearing": "Слышу ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ Станции, которые вы слышите",
+  "pskReporterPanel.tabs.tablistLabel": "Вкладки PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "Вкладки WSJT-X",
   "pskReporterPanel.time.hours": "{{hours}}ч",
   "pskReporterPanel.time.minutes": "{{minutes}}м",
   "pskReporterPanel.time.now": "сейчас",

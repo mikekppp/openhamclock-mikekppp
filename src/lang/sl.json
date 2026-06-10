@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ Postaje, ki slišijo tvoj signal",
   "pskReporterPanel.tabs.hearing": "Slišim ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ Postaje, ki jih slišiš",
+  "pskReporterPanel.tabs.tablistLabel": "Zavihki PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "Zavihki WSJT-X",
   "pskReporterPanel.time.hours": "{{hours}}h",
   "pskReporterPanel.time.minutes": "{{minutes}}m",
   "pskReporterPanel.time.now": "zdaj",

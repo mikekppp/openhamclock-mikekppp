@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ あなたの信号を受信している局",
   "pskReporterPanel.tabs.hearing": "聴取 ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ あなたが聴いている局",
+  "pskReporterPanel.tabs.tablistLabel": "PSK Reporter タブ",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "WSJT-X タブ",
   "pskReporterPanel.time.hours": "{{hours}}時間",
   "pskReporterPanel.time.minutes": "{{minutes}}分",
   "pskReporterPanel.time.now": "今",

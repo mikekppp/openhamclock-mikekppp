@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ სადგურები, რომლებიც გისმენენ",
   "pskReporterPanel.tabs.hearing": "ვისმენ ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ სადგურები, რომლებსაც ისმენთ",
+  "pskReporterPanel.tabs.tablistLabel": "PSK Reporter-ჩანაწერები",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "WSJT-X-ჩანაწერები",
   "pskReporterPanel.time.hours": "{{hours}}სთ",
   "pskReporterPanel.time.minutes": "{{minutes}}წთ",
   "pskReporterPanel.time.now": "ახლა",

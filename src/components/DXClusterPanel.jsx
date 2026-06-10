@@ -208,6 +208,7 @@ export const DXClusterPanel = ({
           <button
             type="button"
             onClick={onOpenFilters}
+            title={t('dxClusterPanel.filterTooltip')}
             aria-label={t('dxClusterPanel.filterTooltip')}
             style={{
               background: filterCount > 0 ? 'rgba(255, 170, 0, 0.3)' : 'rgba(100, 100, 100, 0.3)',
@@ -221,7 +222,7 @@ export const DXClusterPanel = ({
             }}
           >
             <IconSearch size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
-            {t('dxClusterPanel.filtersButton')}
+            {filterCount > 0 ? filterCount : ''}
           </button>
           <button
             onClick={toggleSpotter}
@@ -259,7 +260,6 @@ export const DXClusterPanel = ({
             }}
           >
             <IconMap size={10} style={{ verticalAlign: 'middle', marginRight: '3px' }} />
-            {showOnMap ? t('dxClusterPanel.mapToggleOn') : t('dxClusterPanel.mapToggleOff')}
           </button>
         </div>
       </div>

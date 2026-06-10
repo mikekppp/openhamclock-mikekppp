@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ Estacions que escolten el teu senyal",
   "pskReporterPanel.tabs.hearing": "Escoltant ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ Estacions que escoltes",
+  "pskReporterPanel.tabs.tablistLabel": "PSK Reporter tabs",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "WSJT-X tabs",
   "pskReporterPanel.time.hours": "{{hours}}h",
   "pskReporterPanel.time.minutes": "{{minutes}}m",
   "pskReporterPanel.time.now": "ara",

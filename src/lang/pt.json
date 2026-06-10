@@ -325,6 +325,8 @@
   "pskReporterPanel.tabs.heardTooltip": "▲ Estações ouvindo seu sinal",
   "pskReporterPanel.tabs.hearing": "Ouvindo ({{count}})",
   "pskReporterPanel.tabs.hearingTooltip": "▼ Estações que você ouve",
+  "pskReporterPanel.tabs.tablistLabel": "Abas do PSK Reporter",
+  "pskReporterPanel.tabs.wsjtxTablistLabel": "Abas do WSJT-X",
   "pskReporterPanel.time.hours": "{{hours}}h",
   "pskReporterPanel.time.minutes": "{{minutes}}m",
   "pskReporterPanel.time.now": "agora",
