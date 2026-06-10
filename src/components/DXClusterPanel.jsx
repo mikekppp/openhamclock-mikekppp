@@ -8,6 +8,7 @@ import { getBandColor } from '../utils/callsign.js';
 import { matchesDXSpotPath } from '../utils/dxClusterSpotMatcher';
 import { IconSearch, IconMap, IconGlobe } from './Icons.jsx';
 import CallsignLink from './CallsignLink.jsx';
+import { useCallsignPopup } from './CallsignPopupManager.jsx';
 import { classifySpotMode } from '../hooks/useBandHealth.js';
 
 export const DXClusterPanel = ({
@@ -25,6 +26,7 @@ export const DXClusterPanel = ({
   onToggleMap,
 }) => {
   const { t } = useTranslation();
+  const { showPopup } = useCallsignPopup();
 
   // Spotter column visibility (#995). Default on to match historical behaviour;
   // users with tight vertical space can hide it to roughly double the spot
@@ -393,7 +395,13 @@ export const DXClusterPanel = ({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <CallsignLink call={spot.call} color="var(--text-primary)" fontWeight="700" />
+                  <CallsignLink
+                    call={spot.call}
+                    color="var(--text-primary)"
+                    fontWeight="700"
+                    onPopup={showPopup}
+                    location={{ grid: spot.dxGrid, lat: spot.dxLat, lon: spot.dxLon }}
+                  />
                 </div>
                 <div
                   role="cell"
@@ -427,7 +435,14 @@ export const DXClusterPanel = ({
                       alignSelf: 'center',
                     }}
                   >
-                    de <CallsignLink call={spot.spotter || '?'} color="var(--text-muted)" fontSize="10px" />
+                    de{' '}
+                    <CallsignLink
+                      call={spot.spotter || '?'}
+                      color="var(--text-muted)"
+                      fontSize="10px"
+                      onPopup={showPopup}
+                      location={{ grid: spot.spotterGrid, lat: spot.spotterLat, lon: spot.spotterLon }}
+                    />
                   </div>
                 )}
                 <div

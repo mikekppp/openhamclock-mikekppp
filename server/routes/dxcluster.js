@@ -1695,7 +1695,7 @@ module.exports = function (app, ctx) {
             lon: cached.data.lon,
             country: cached.data.country || '',
             grid: cached.data.grid || null,
-            source: 'hamqth',
+            source: 'hamqth-dxcc',
           };
         } else if (!prefixLocations[call]?.grid) {
           // Only queue lookups for calls that don't already have grid-level accuracy
@@ -1714,29 +1714,14 @@ module.exports = function (app, ctx) {
           if (!call || !/^[A-Z0-9\/\-]{1,20}$/.test(call)) continue;
 
           // Fire-and-forget — results land in callsignLookupCache for next poll
-          fetch(`https://www.hamqth.com/dxcc.php?callsign=${encodeURIComponent(call)}`, {
-            headers: { 'User-Agent': 'OpenHamClock/' + APP_VERSION },
-            signal: AbortSignal.timeout(5000),
-          })
-            .then(async (resp) => {
-              if (!resp.ok) return;
-              const text = await resp.text();
-              const latMatch = text.match(/<lat>([^<]+)<\/lat>/);
-              const lonMatch = text.match(/<lng>([^<]+)<\/lng>/);
-              const countryMatch = text.match(/<n>([^<]+)<\/name>/);
-              if (latMatch && lonMatch) {
-                cacheCallsignLookup(call, {
-                  data: {
-                    callsign: call,
-                    lat: parseFloat(latMatch[1]),
-                    lon: parseFloat(lonMatch[1]),
-                    country: countryMatch ? countryMatch[1] : '',
-                  },
-                  timestamp: Date.now(),
-                });
-              }
-            })
-            .catch(() => {}); // Silent fail for background lookups
+          // TODO: Refactor lookup chain into callsign.js. Currently we duplicate the full
+          // flow (cache check → HamQTH DXCC → prefix estimation) here instead of using
+          // the shared hamqthLookup() + extractBaseCallsign() chain from callsign.js.
+          hamqthLookup(call).then((result) => {
+            if (result) {
+              cacheCallsignLookup(call, { data: result, timestamp: Date.now() });
+            }
+          });
         }
       }
 
