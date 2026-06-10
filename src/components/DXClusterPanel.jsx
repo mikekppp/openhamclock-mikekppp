@@ -122,6 +122,7 @@ export const DXClusterPanel = ({
     if (filters?.commentText?.length) count++;
     if (filters?.callsign) count++;
     if (filters?.watchlistOnly) count++;
+    if (filters?.dxpeditionsOnly) count++;
     if (filters?.excludeContinents) count += filters.excludeContinents.length;
     if (filters?.excludeCqZones) count += filters.excludeCqZones.length;
     if (filters?.excludeItuZones) count += filters.excludeItuZones.length;

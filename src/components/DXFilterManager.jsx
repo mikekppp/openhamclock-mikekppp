@@ -76,6 +76,7 @@ export const DXFilterManager = ({ filters, onFilterChange, isOpen, onClose, onCl
     if (filters?.modes?.length) count += filters.modes.length;
     if (filters?.watchlist?.length) count += filters.watchlist.length;
     if (filters?.commentText?.length) count += filters.commentText.length;
+    if (filters?.dxpeditionsOnly) count += 1;
 
     /* excludes */
     if (filters?.excludeContinents?.length) count += filters.excludeContinents.length;
@@ -466,6 +467,28 @@ export const DXFilterManager = ({ filters, onFilterChange, isOpen, onClose, onCl
           />
           Show only watchlist callsigns
         </label>
+      </div>
+      <div style={{ marginTop: '12px' }}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'var(--text-secondary)',
+            fontSize: '12px',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={filters?.dxpeditionsOnly || false}
+            onChange={(e) => onFilterChange({ ...filters, dxpeditionsOnly: e.target.checked || undefined })}
+          />
+          Show only DXpeditions
+        </label>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', marginLeft: '24px' }}>
+          Keeps spots whose callsign matches an active or upcoming DXpedition (NG3K list).
+        </div>
       </div>
     </div>
   );

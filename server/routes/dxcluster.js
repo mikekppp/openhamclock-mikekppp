@@ -67,6 +67,16 @@ module.exports = function (app, ctx) {
     return null;
   }
 
+  // Is this callsign a known (active or upcoming) DXpedition? Lighter check
+  // than lookupDXpeditionLocation — matches even when the entity's
+  // coordinates can't be resolved, which is all the panel filter needs.
+  function isDXpeditionCall(call) {
+    const cache = ctx.dxpeditionCache;
+    if (!cache?.data?.dxpeditions) return false;
+    const upper = (call || '').toUpperCase();
+    return cache.data.dxpeditions.some((d) => d.callsign?.toUpperCase() === upper);
+  }
+
   // DX Spider Proxy URL (sibling service on Railway or external)
   const DXSPIDER_PROXY_URL = process.env.DXSPIDER_PROXY_URL || 'https://spider-production-1ec7.up.railway.app';
 
@@ -1878,6 +1888,7 @@ module.exports = function (app, ctx) {
             dxCountry: dxLoc?.country || '',
             dxGrid: dxGridSquare,
             dxLocSource: dxLoc?.source || null,
+            isDXpedition: isDXpeditionCall(spot.dxCall),
             freq: spot.freq,
             comment: spot.comment,
             time: spot.time,

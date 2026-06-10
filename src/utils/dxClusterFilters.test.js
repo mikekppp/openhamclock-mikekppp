@@ -86,6 +86,32 @@ describe('dxClusterFilters', () => {
     });
   });
 
+  describe('DXpeditions-Only Filter', () => {
+    it('should include all spots when dxpeditionsOnly is not set', () => {
+      expect(applyDXFilters(mockSpot, {})).toBe(true);
+      expect(applyDXFilters({ ...mockSpot, isDXpedition: true }, {})).toBe(true);
+    });
+
+    it('should include only server-tagged DXpedition spots when enabled', () => {
+      const filters = { dxpeditionsOnly: true };
+      expect(applyDXFilters({ ...mockSpot, isDXpedition: true }, filters)).toBe(true);
+      expect(applyDXFilters({ ...mockSpot, isDXpedition: false }, filters)).toBe(false);
+    });
+
+    it('should treat untagged spots as non-DXpeditions when enabled', () => {
+      const filters = { dxpeditionsOnly: true };
+      expect(applyDXFilters(mockSpot, filters)).toBe(false);
+    });
+
+    it('should compose with other filters', () => {
+      const filters = { dxpeditionsOnly: true, watchlistOnly: true, watchlist: ['W1'] };
+      expect(applyDXFilters({ ...mockSpot, isDXpedition: true }, filters)).toBe(true);
+      // Passes DXpedition check but fails watchlist
+      const offWatchlist = { ...mockSpot, dxCall: 'TX5U', isDXpedition: true };
+      expect(applyDXFilters(offWatchlist, filters)).toBe(false);
+    });
+  });
+
   describe('Spotter Inclusion Filters', () => {
     describe('Continent Filter', () => {
       it('should include spot when spotter is from selected continent', () => {

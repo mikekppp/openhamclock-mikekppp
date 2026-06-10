@@ -241,6 +241,13 @@ export const applyDXFilters = (item, filters) => {
     return false;
   }
 
+  // DXpeditions-only: keep just spots the server tagged against the active
+  // DXpedition list (NG3K data). Untagged items (e.g. from sources that skip
+  // the paths enrichment) are treated as non-DXpeditions.
+  if (filters.dxpeditionsOnly && !item.isDXpedition) {
+    return false;
+  }
+
   if (!applySpotterInclusionFilters(filters, spotterInfo, dxInfo)) {
     return false;
   }
