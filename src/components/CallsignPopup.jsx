@@ -5,7 +5,6 @@
  * (name, grid, country, state) and includes a
  * clickable icon to open the callsign in the user's configured callbook.
  *
- * Auto-dismisses after 15s. Dismisses on outside click or Escape key.
  *
  * Usage:
  *   <CallsignPopup
