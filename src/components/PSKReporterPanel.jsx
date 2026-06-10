@@ -7,7 +7,7 @@
  *   Row 2: Sub-tabs (Being Heard / Hearing  or  Decodes / QSOs)
  *   Content: Scrolling spot/decode list
  */
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getBandColor } from '../utils/callsign.js';
 import { ariaTabKeyDown } from '../utils/ariaTabKeyDown.js';
@@ -99,7 +99,20 @@ const PSKReporterPanel = ({
   };
 
   // Computed tab routing (must be after all state/setter declarations)
-  const ALL_TABS = panelMode === 'psk' ? PSK_TABS : WSJT_X_TABS;
+  // Filter out 'wspr' when the WSPR tab isn't rendered, so arrow-key cycling
+  // never lands on an invisible tab.
+  const wsprtClients = Object.entries(wsjtxClients);
+  const wsprtPrimary = wsprtClients[0]?.[1] || null;
+  const wsprtIsWSPR = wsprtPrimary?.mode?.toUpperCase() === 'WSPR';
+  const wsprTabVisible = wsprtIsWSPR || wsjtxWspr.length > 0;
+  const ALL_TABS = panelMode === 'psk' ? PSK_TABS : WSJT_X_TABS.filter((t) => t !== 'wspr' || wsprTabVisible);
+
+  // If WSPR tab disappears while it's selected, switch to 'decodes'
+  useEffect(() => {
+    if (panelMode === 'wsjtx' && wsjtxTab === 'wspr' && !wsprTabVisible) {
+      setWsjtxTab('decodes');
+    }
+  }, [panelMode, wsjtxTab, wsprTabVisible]);
   const activeTabKey = panelMode === 'psk' ? activeTab : wsjtxTab;
   const setActiveTabFn = panelMode === 'psk' ? setActiveTabPersist : setWsjtxTab;
   const activeTabRefs = panelMode === 'psk' ? pskTabRefs : wsjtxTabRefs;
