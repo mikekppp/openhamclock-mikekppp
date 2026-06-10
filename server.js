@@ -227,7 +227,7 @@ if (distExists) {
 
 app.use(express.static(publicDir, staticOptions));
 
-// ── Prometheus API metrics middleware (before routes) ──
+// ── Prometheus API metrics middleware (before routes, patterns extracted lazily) ──
 app.use(prometheus.apiMetricsMiddleware());
 
 // ── Register route modules ──

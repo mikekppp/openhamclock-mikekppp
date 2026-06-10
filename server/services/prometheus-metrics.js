@@ -70,6 +70,22 @@ const apiDuration = new client.Histogram({
   buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
 });
 
+// API request body size histogram (bytes) — OpenTelemetry http.request.body.size
+const apiRequestSize = new client.Histogram({
+  name: 'ohc_api_request_body_size_bytes',
+  help: 'API request body size in bytes',
+  labelNames: ['route'],
+  buckets: [0, 64, 256, 1024, 4096, 16384, 65536],
+});
+
+// API response body size histogram (bytes) — OpenTelemetry http.response.body.size
+const apiResponseSize = new client.Histogram({
+  name: 'ohc_api_response_body_size_bytes',
+  help: 'API response body size in bytes',
+  labelNames: ['route'],
+  buckets: [0, 128, 512, 1024, 4096, 16384, 65536, 262144, 1048576],
+});
+
 // ── Subsystem health gauges ──────────────────────────────────────────────────
 // 1 = ok/unknown, 2 = degraded, 3 = down
 // Read at scrape time from ctx
@@ -88,32 +104,87 @@ const subsystemStatus = new client.Gauge({
   },
 });
 
+// ── Extract route patterns from Express app's internal router tree ───────────
+// Transforms :param → {param} for each route definition.
+// Used at boot to build a lookup for runtime route normalization.
+
+function extractRoutePatterns(app) {
+  const patterns = [];
+
+  function traverse(layer) {
+    if (layer.route) {
+      // Only process string paths (skip RegExp routes, catch-all, etc.)
+      if (typeof layer.route.path !== 'string') return;
+      if (layer.route.path === '*' || layer.route.path === '/*') return;
+      // /api/wsjtx/relay/download/:platform
+      //        → /api/wsjtx/relay/download/{platform}
+      const normalized = layer.route.path.replace(/\/:([^/]+)/g, '/{$1}');
+      patterns.push(normalized);
+    }
+    // Handle nested routers (express.Router instances)
+    if (layer.handle && layer.handle.stack) {
+      layer.handle.stack.forEach(traverse);
+    }
+  }
+
+  app._router.stack.forEach(traverse);
+  return patterns;
+}
+
+// ── Match a request path against known route patterns ────────────────────────
+// Returns the normalized pattern if matched, otherwise returns the original path.
+
+function normalizeRoute(reqPath, patterns) {
+  const segments = reqPath.split('/').filter(Boolean);
+
+  for (const pattern of patterns) {
+    const patSegments = pattern.split('/').filter(Boolean);
+    if (patSegments.length !== segments.length) continue;
+
+    let match = true;
+    for (let i = 0; i < patSegments.length; i++) {
+      if (patSegments[i].startsWith('{')) continue; // param — match anything
+      if (patSegments[i] !== segments[i]) {
+        match = false;
+        break;
+      }
+    }
+
+    if (match) return pattern;
+  }
+
+  return reqPath; // no known pattern matches
+}
+
 // ── Middleware: track API requests ───────────────────────────────────────────
+// Patterns are extracted lazily on first request to avoid chicken-and-egg
+// (middleware must run before routes register, but patterns come from routes).
 
 function apiMetricsMiddleware() {
+  let patterns = null;
+
   return (req, res, next) => {
     // Skip metrics endpoint itself
     if (req.path === '/metrics') return next();
 
+    // Extract patterns on first request (one-time cost, cached thereafter)
+    if (!patterns) {
+      patterns = extractRoutePatterns(req.app);
+      console.log(`[Prometheus] Extracted ${patterns.length} route patterns from app router`);
+    }
+
     const startTime = Date.now();
-    const route = req.path.replace(/\/[A-Z0-9]{3,10}(-[A-Z0-9]+)?$/i, '/:param').replace(/\/\d+$/g, '/:id');
+    const route = normalizeRoute(req.path, patterns);
 
-    const originalJson = res.json;
-    const originalSend = res.send;
-
-    res.json = function (body) {
+    res.on('finish', () => {
       const duration = (Date.now() - startTime) / 1000;
       apiRequestsTotal.labels(route, req.method, String(res.statusCode)).inc();
       apiDuration.labels(route).observe(duration);
-      return originalJson.call(this, body);
-    };
-
-    res.send = function (body) {
-      const duration = (Date.now() - startTime) / 1000;
-      apiRequestsTotal.labels(route, req.method, String(res.statusCode)).inc();
-      apiDuration.labels(route).observe(duration);
-      return originalSend.call(this, body);
-    };
+      apiRequestSize.labels(route).observe(req.headers['content-length'] ? Number(req.headers['content-length']) : 0);
+      apiResponseSize
+        .labels(route)
+        .observe(res.getHeader('Content-Length') ? Number(res.getHeader('Content-Length')) : 0);
+    });
 
     next();
   };
@@ -146,6 +217,8 @@ module.exports = {
   upstreamFailures,
   apiRequestsTotal,
   apiDuration,
+  apiRequestSize,
+  apiResponseSize,
 
   // Injectors (call once at boot to wire collect() functions)
   setSessionTracker,
@@ -154,6 +227,9 @@ module.exports = {
 
   // Middleware
   apiMetricsMiddleware,
+
+  // Route extraction (called from server.js after all routes registered)
+  extractRoutePatterns,
 
   // Registry (for /metrics endpoint)
   registry: client.register,
