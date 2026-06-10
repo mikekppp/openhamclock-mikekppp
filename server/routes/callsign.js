@@ -600,6 +600,7 @@ module.exports = function (app, ctx) {
   async function hamqthLookup(callsign, _retried = false) {
     try {
       const response = await fetch(`https://www.hamqth.com/dxcc_json.php?callsign=${encodeURIComponent(callsign)}`, {
+        headers: { 'User-Agent': `OpenHamClock/${APP_VERSION}` },
         signal: AbortSignal.timeout(2000),
       });
 
