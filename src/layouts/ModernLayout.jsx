@@ -359,6 +359,7 @@ export default function ModernLayout(props) {
     <DXClusterPanel
       data={dxClusterData.spots}
       loading={dxClusterData.loading}
+      error={dxClusterData.error}
       totalSpots={dxClusterData.totalSpots}
       filters={dxFilters}
       onFilterChange={setDxFilters}

@@ -13,6 +13,7 @@ import { classifySpotMode } from '../hooks/useBandHealth.js';
 export const DXClusterPanel = ({
   data,
   loading,
+  error,
   totalSpots,
   filters,
   onFilterChange,
@@ -297,11 +298,11 @@ export const DXClusterPanel = ({
           style={{
             textAlign: 'center',
             padding: '20px',
-            color: 'var(--text-muted)',
+            color: error ? 'var(--accent-red)' : 'var(--text-muted)',
             fontSize: '12px',
           }}
         >
-          {filterCount > 0 ? t('dxClusterPanel.noSpotsFiltered') : t('dxClusterPanel.noSpots')}
+          {error ? error : filterCount > 0 ? t('dxClusterPanel.noSpotsFiltered') : t('dxClusterPanel.noSpots')}
         </div>
       ) : (
         <div

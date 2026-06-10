@@ -70,6 +70,10 @@ module.exports = function (app, ctx) {
   // DX Spider Proxy URL (sibling service on Railway or external)
   const DXSPIDER_PROXY_URL = process.env.DXSPIDER_PROXY_URL || 'https://spider-production-1ec7.up.railway.app';
 
+  // OpenHamClock's own cluster node (ohc-cluster/ sibling service).
+  // Unset = not deployed yet; the source is hidden and auto mode skips it.
+  const OHC_CLUSTER_URL = (process.env.OHC_CLUSTER_URL || '').replace(/\/$/, '');
+
   // Cache for DX Spider telnet spots (to avoid excessive connections)
   let dxSpiderCache = { spots: [], timestamp: 0 };
   const DXSPIDER_CACHE_TTL = 90000; // 90 seconds cache - reduces reconnection frequency
@@ -83,6 +87,14 @@ module.exports = function (app, ctx) {
     { host: 'dxc.ai9t.com', port: 7373 },
   ];
   const DXSPIDER_SSID = '-56'; // OpenHamClock SSID
+
+  // Validate an amateur callsign (optionally with an SSID like -56).
+  // Permissive about real callsign shapes, but rejects junk like
+  // 'OPENHAMCLOCK-56' or 'GUEST' — cluster nodes treat invalid logins as
+  // abuse, and that falls back on the whole project. Mirrors the validator
+  // in dxspider-proxy/server.js and ohc-cluster/lib/callsign.js.
+  const isValidCallsign = (call) =>
+    typeof call === 'string' && /^[A-Z0-9]{1,3}\d[A-Z]{1,4}(-\d{1,2})?$/i.test(call.trim());
 
   function getDxClusterLoginCallsign(preferredCallsign = null) {
     // Strip control characters to prevent telnet command injection via query params
@@ -665,6 +677,36 @@ module.exports = function (app, ctx) {
       return null;
     }
 
+    // Helper function for the OpenHamClock Cluster (our own node — RBN
+    // skimmers + HamQTH human spots + OHC user submissions)
+    async function fetchOHCCluster() {
+      if (!OHC_CLUSTER_URL) return null;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      try {
+        const response = await fetch(`${OHC_CLUSTER_URL}/api/dxcluster/spots?limit=50`, {
+          headers: { 'User-Agent': `OpenHamClock/${APP_VERSION}` },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
+        if (response.ok) {
+          const spots = await response.json();
+          if (Array.isArray(spots) && spots.length > 0) {
+            logDebug('[DX Cluster] OHC Cluster:', spots.length, 'spots');
+            return spots;
+          }
+        }
+      } catch (error) {
+        clearTimeout(timeout);
+        if (error.name !== 'AbortError') {
+          logErrorOnce('DX Cluster', `OHC Cluster: ${error.message}`);
+        }
+      }
+      return null;
+    }
+
     // Helper function for DX Spider (telnet-based, works locally/Pi)
     // Multiple nodes for failover - uses module-level constants and tryDXSpiderNode
     async function fetchDXSpider() {
@@ -689,7 +731,17 @@ module.exports = function (app, ctx) {
     // Fetch based on selected source
     let spots = null;
 
-    if (source === 'hamqth') {
+    if (source === 'ohc') {
+      spots = await fetchOHCCluster();
+      // Fallback chain if our node is down
+      if (!spots) {
+        logDebug('[DX Cluster] OHC Cluster failed, falling back to Proxy');
+        spots = await fetchDXSpiderProxy();
+      }
+      if (!spots) {
+        spots = await fetchHamQTH();
+      }
+    } else if (source === 'hamqth') {
       spots = await fetchHamQTH();
     } else if (source === 'proxy') {
       spots = await fetchDXSpiderProxy();
@@ -706,8 +758,11 @@ module.exports = function (app, ctx) {
         spots = await fetchHamQTH();
       }
     } else {
-      // Auto mode - try Proxy first (best for Railway), then HamQTH, then DX Spider
-      spots = await fetchDXSpiderProxy();
+      // Auto mode - our own cluster first (when deployed), then Proxy, then HamQTH, then DX Spider
+      spots = await fetchOHCCluster();
+      if (!spots) {
+        spots = await fetchDXSpiderProxy();
+      }
       if (!spots) {
         spots = await fetchHamQTH();
       }
@@ -725,8 +780,20 @@ module.exports = function (app, ctx) {
       {
         id: 'auto',
         name: 'Auto (Best Available)',
-        description: 'Tries Proxy first, then HamQTH, then direct telnet',
+        description: OHC_CLUSTER_URL
+          ? 'Tries OHC Cluster first, then Proxy, then HamQTH, then direct telnet'
+          : 'Tries Proxy first, then HamQTH, then direct telnet',
       },
+      // Our own node — only offered once OHC_CLUSTER_URL is configured
+      ...(OHC_CLUSTER_URL
+        ? [
+            {
+              id: 'ohc',
+              name: 'OpenHamClock Cluster ⭐',
+              description: 'Our own cluster node — RBN skimmers, human spots, and OHC user spots',
+            },
+          ]
+        : []),
       {
         id: 'proxy',
         name: 'DX Spider Proxy ⭐',
@@ -1271,6 +1338,16 @@ module.exports = function (app, ctx) {
       // Basic port range sanity check
       if (customPort < 1 || customPort > 65535) {
         return res.status(400).json({ error: 'Port must be between 1 and 65535' });
+      }
+      // GOOD-NEIGHBOUR POLICY: connecting to someone else's cluster node
+      // requires the USER's own valid callsign. No GUEST, no shared default —
+      // sysops must see who is actually connecting (the NC7J lesson).
+      const loginCallsign = getDxClusterLoginCallsign(userCallsign);
+      if (loginCallsign === 'GUEST' || !isValidCallsign(loginCallsign)) {
+        return res.status(400).json({
+          error:
+            'Custom DX cluster requires your own valid callsign. Set your callsign in DX Cluster settings before connecting.',
+        });
       }
     }
 

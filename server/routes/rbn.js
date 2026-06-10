@@ -89,7 +89,13 @@ module.exports = function (app, ctx) {
 
     let dataBuffer = '';
     let authenticated = false;
-    const userCallsign = 'OPENHAMCLOCK'; // Generic callsign for the app
+    // Log in with a REAL callsign: the instance owner's if configured, else
+    // the project callsign. RBN is tolerant of junk logins, but presenting
+    // invalid callsigns to other people's infrastructure is how OpenHamClock
+    // ends up in sysop screenshots — never again (see dxspider-proxy notes).
+    const isValidCall = (c) => typeof c === 'string' && /^[A-Z0-9]{1,3}\d[A-Z]{1,4}(-\d{1,2})?$/i.test(c.trim());
+    const configuredCall = (CONFIG.callsign || '').trim().toUpperCase();
+    const userCallsign = isValidCall(configuredCall) && configuredCall !== 'N0CALL' ? configuredCall : 'K0CJH-3';
 
     const client = net.createConnection(
       {
