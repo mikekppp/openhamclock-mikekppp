@@ -12,7 +12,7 @@
  *   const { localTime } = useTimezone('FN20');
  *   // localTime is null on first mount, updates after API resolves
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 // ── Timezone cache (module-level, survives remounts) ──────────────────
 // LRU eviction: Map keeps insertion/access order; first key = least recently used.
@@ -37,7 +37,7 @@ function setCachedTz(grid, timezone) {
   if (tzCache.size >= TZ_CACHE_MAX) {
     // Evict least recently used (first entry in Map order)
     const lruKey = tzCache.keys().next().value;
-    tzCache.delete(lruKey);
+    if (lruKey) tzCache.delete(lruKey);
   }
   tzCache.set(grid, { timezone, timestamp: Date.now() });
 }
@@ -54,11 +54,6 @@ function formatLocalTime(timezone) {
 
 export default function useTimezone(grid) {
   const [localTime, setLocalTime] = useState(null);
-  const mountedRef = useRef(false);
-
-  useEffect(() => {
-    mountedRef.current = true;
-  }, []);
 
   useEffect(() => {
     if (!grid) {
@@ -69,9 +64,7 @@ export default function useTimezone(grid) {
     // Check cache first
     const cached = getCachedTz(grid);
     if (cached) {
-      if (mountedRef.current) {
-        setLocalTime(formatLocalTime(cached));
-      }
+      setLocalTime(formatLocalTime(cached));
       return;
     }
 
@@ -84,7 +77,7 @@ export default function useTimezone(grid) {
     })
       .then((r) => r.json())
       .then((result) => {
-        if (mountedRef.current && result.timezone) {
+        if (result.timezone) {
           setCachedTz(grid, result.timezone);
           setLocalTime(formatLocalTime(result.timezone));
         }
@@ -95,7 +88,6 @@ export default function useTimezone(grid) {
       });
 
     return () => {
-      mountedRef.current = false;
       controller.abort();
     };
   }, [grid]);
