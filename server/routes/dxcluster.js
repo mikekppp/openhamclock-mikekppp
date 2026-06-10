@@ -795,6 +795,89 @@ module.exports = function (app, ctx) {
     res.json(spots || []);
   });
 
+  // ============================================
+  // SPOT SUBMISSION — relay user spots to our own cluster node
+  // ============================================
+  // The browser never talks to the cluster directly: on hosted deployments it
+  // lives on the private network, and going through the instance keeps one
+  // validation + rate-limit path for everyone.
+  const { getClientIP } = require('../utils/helpers.js');
+  const SPOT_SUBMIT_WINDOW_MS = 60 * 1000;
+  const SPOT_SUBMIT_MAX_PER_WINDOW = 3; // per client IP — humans don't spot faster
+  const spotSubmitTimesByIp = new Map();
+
+  setInterval(
+    () => {
+      const cutoff = Date.now() - SPOT_SUBMIT_WINDOW_MS;
+      for (const [ip, times] of spotSubmitTimesByIp) {
+        const fresh = times.filter((t) => t > cutoff);
+        if (fresh.length === 0) spotSubmitTimesByIp.delete(ip);
+        else spotSubmitTimesByIp.set(ip, fresh);
+      }
+    },
+    5 * 60 * 1000,
+  ).unref();
+
+  app.post('/api/dxcluster/spot', async (req, res) => {
+    if (!OHC_CLUSTER_URL) {
+      return res.status(503).json({ error: 'OpenHamClock Cluster is not configured on this instance' });
+    }
+
+    const ip = getClientIP(req);
+    const now = Date.now();
+    const times = (spotSubmitTimesByIp.get(ip) || []).filter((t) => now - t < SPOT_SUBMIT_WINDOW_MS);
+    if (times.length >= SPOT_SUBMIT_MAX_PER_WINDOW) {
+      return res.status(429).json({ error: 'Easy there — max 3 spots per minute' });
+    }
+
+    const spotter = String(req.body?.spotter || '')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .trim()
+      .toUpperCase();
+    const call = String(req.body?.call || '')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .trim()
+      .toUpperCase();
+    const freqKhz = parseFloat(req.body?.freqKhz);
+    const comment = String(req.body?.comment || '')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .trim()
+      .slice(0, 60);
+
+    if (!isValidCallsign(spotter) || spotter.startsWith('N0CALL')) {
+      return res.status(400).json({ error: 'Set your own valid callsign in Settings before spotting' });
+    }
+    if (!isValidCallsign(call)) {
+      return res.status(400).json({ error: `"${call}" does not look like a valid callsign` });
+    }
+    if (!Number.isFinite(freqKhz) || freqKhz < 100 || freqKhz > 1300000) {
+      return res.status(400).json({ error: 'Frequency out of range (kHz expected)' });
+    }
+
+    times.push(now);
+    spotSubmitTimesByIp.set(ip, times);
+
+    try {
+      const response = await fetch(`${OHC_CLUSTER_URL}/api/dxcluster/spot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'User-Agent': `OpenHamClock/${APP_VERSION}` },
+        body: JSON.stringify({ spotter, call, freqKhz, comment }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return res
+          .status(response.status === 429 ? 429 : 502)
+          .json({ error: body.error || 'Cluster rejected the spot' });
+      }
+      logInfo(`[DX Cluster] ${spotter} spotted ${call} on ${freqKhz} kHz via web UI`);
+      res.status(201).json({ ok: true, spot: body.spot || { call, freqKhz } });
+    } catch (err) {
+      logErrorOnce('DX Cluster', `Spot relay failed: ${err.message}`);
+      res.status(502).json({ error: 'Could not reach the cluster — try again shortly' });
+    }
+  });
+
   // Get available DX cluster sources
   app.get('/api/dxcluster/sources', (req, res) => {
     if (IS_HOSTED) {
