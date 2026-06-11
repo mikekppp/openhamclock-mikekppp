@@ -370,7 +370,12 @@ const App = () => {
     gridSquare: config.locator || '',
   });
   const wsjtx = useWSJTX();
-  const aprsData = useAPRS();
+  // Only poll the APRS endpoints when APRS can actually be shown: the map
+  // layer toggle, the EmComm layout (always draws APRS), or the dockable
+  // layout (APRS panel may be docked). Everyone else generates zero traffic.
+  const aprsData = useAPRS({
+    enabled: mapLayers.showAPRS || config.layout === 'emcomm' || config.layout === 'dockable',
+  });
   const ibp = useIBP(config.location?.lat ?? null, config.location?.lon ?? null);
   const meshcomData = useMeshCom();
   const emcommData = useEmcommData({
