@@ -50,6 +50,7 @@ import { DXFavorites } from './components/DXFavorites.jsx';
 import DXCCSelect from './components/DXCCSelect.jsx';
 import './styles/flexlayout-openhamclock.css';
 import useMapLayers from './hooks/app/useMapLayers';
+import { useMapTextData } from './hooks/useMapTextData.js';
 import useRotator from './hooks/useRotator';
 
 // Icons
@@ -266,6 +267,10 @@ export const DockableApp = ({
       [tabsetId]: { ...prev[tabsetId], interval: parseInt(secs, 10) },
     }));
   }, []);
+
+  // Lightning / aircraft / aurora / Winlink data broadcast out of the map
+  // plugins for the text view panel (#1002 v2).
+  const mapTextData = useMapTextData();
 
   // Fallback: if parent did not provide map-layer toggles (seen with rotator),
   // use the internal hook so the map buttons still work.
@@ -753,6 +758,10 @@ export const DockableApp = ({
               sotaSpots={filteredSotaSpots || sotaSpots?.data}
               wwffSpots={filteredWwffSpots || wwffSpots?.data}
               wwbotaSpots={filteredWwbotaSpots || wwbotaSpots?.data}
+              lightning={mapTextData.lightning}
+              aircraft={mapTextData.aircraft}
+              aurora={mapTextData.aurora}
+              winlink={mapTextData.winlink}
               deLocation={config.location}
               units={config.allUnits?.dist}
             />

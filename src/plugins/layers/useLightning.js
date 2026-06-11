@@ -108,6 +108,23 @@ export function useLayer({ enabled = false, opacity = 0.9, map = null, lowMemory
   const isMetric = allUnits.dist === 'metric';
   const unitsStr = isMetric ? 'km' : 'miles';
 
+  // Broadcast strikes to the text view panel (#1002). The map re-renders
+  // every second; the text panel doesn't need more than one refresh per 5s,
+  // so intermediate updates are skipped (the next state change past the
+  // window carries the full buffer anyway).
+  const lastTextBroadcastRef = useRef(0);
+  useEffect(() => {
+    if (!enabled) {
+      window.dispatchEvent(new CustomEvent('mapdata:lightning', { detail: { enabled: false } }));
+      return;
+    }
+    const now = Date.now();
+    if (lightningData.length > 0 && now - lastTextBroadcastRef.current < 5000) return;
+    lastTextBroadcastRef.current = now;
+    window.dispatchEvent(new CustomEvent('mapdata:lightning', { detail: { enabled: true, strikes: lightningData } }));
+  }, [enabled, lightningData]);
+  useEffect(() => () => window.dispatchEvent(new CustomEvent('mapdata:lightning', { detail: { enabled: false } })), []);
+
   // Fetch WebSocket key from Blitzortung (fallback to 111)
   useEffect(() => {
     if (enabled && !wsKey) {
