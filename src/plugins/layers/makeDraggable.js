@@ -161,8 +161,8 @@ export function makeDraggable(
       didDrag = false;
       startX = e.clientX;
       startY = e.clientY;
-      startLeft = el.offsetLeft;
-      startTop = el.offsetTop;
+      startLeft = parseFloat(el.style.left) || 0;
+      startTop = parseFloat(el.style.top) || 0;
       previousTransition = el.style.transition;
       el.style.transition = 'none';
       dragHandle.style.cursor = 'grabbing';
@@ -208,14 +208,14 @@ export function makeDraggable(
       suppressClick = didDrag;
 
       if (snap) {
-        el.style.left = snapToGrid(el.offsetLeft, snap) + 'px';
-        el.style.top = snapToGrid(el.offsetTop, snap) + 'px';
+        el.style.left = snapToGrid(parseFloat(el.style.left), snap) + 'px';
+        el.style.top = snapToGrid(parseFloat(el.style.top), snap) + 'px';
       }
 
       clampToViewport(el);
 
-      const topPercent = (el.offsetTop / window.innerHeight) * 100;
-      const leftPercent = (el.offsetLeft / window.innerWidth) * 100;
+      const topPercent = (parseFloat(el.style.top) / window.innerHeight) * 100;
+      const leftPercent = (parseFloat(el.style.left) / window.innerWidth) * 100;
       localStorage.setItem(
         storageKey,
         JSON.stringify({
