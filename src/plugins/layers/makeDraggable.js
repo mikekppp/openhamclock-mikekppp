@@ -65,6 +65,7 @@ export function makeDraggable(
       try {
         const data = JSON.parse(saved);
         el.style.position = 'fixed';
+        el.style.margin = '0';
         if (data.topPercent !== undefined && data.leftPercent !== undefined) {
           el.style.top = data.topPercent + '%';
           el.style.left = data.leftPercent + '%';
@@ -83,6 +84,7 @@ export function makeDraggable(
     } else {
       const rect = el.getBoundingClientRect();
       el.style.position = 'fixed';
+      el.style.margin = '0';
       el.style.top = rect.top + 'px';
       el.style.left = rect.left + 'px';
       el.style.right = 'auto';
@@ -132,6 +134,7 @@ export function makeDraggable(
       // Re-fix to current computed position
       const rect = el.getBoundingClientRect();
       el.style.position = 'fixed';
+      el.style.margin = '0';
       el.style.top = rect.top + 'px';
       el.style.left = rect.left + 'px';
       el.style.right = 'auto';
