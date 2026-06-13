@@ -126,7 +126,7 @@ const verifyChecksum = async (destDir, filesExpected) => {
       }
 
       if ((await verifyChecksum(DEST_DIR, filesExpected)) === false)
-        throw new Error(`sha256 mismatch, verifyChecksum failed after download`);
+        throw new Error(`sha256 mismatch, verifyChecksum failed after WASM package download`);
 
       console.log(`✓ fetch-wasm: installed to '${DEST_DIR}'`);
 
