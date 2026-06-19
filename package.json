@@ -8,6 +8,7 @@
     "electron": "electron .",
     "electron-builder": "electron-builder",
     "build": "npx vite build",
+    "bridge:n3fjp": "node scripts/n3fjp-bridge.js",
     "lang:check": "node scripts/lang-check-json-key-sort.js",
     "lang:sort": "node scripts/lang-json-key-sort.mjs",
     "preview": "npx vite preview",
