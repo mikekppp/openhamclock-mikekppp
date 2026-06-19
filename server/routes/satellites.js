@@ -85,6 +85,319 @@ module.exports = function (app, ctx) {
     logInfo(`[Satellites] Routing CelesTrak/AMSAT/SatNOGS fetches via ${FLETCHER_URL}`);
   }
 
+  // SatNOGS Transmitter DB radio metadata.
+  // OpenHamClock issue: https://github.com/accius/openhamclock/issues/1009
+  const SATNOGS_TRANSMITTER_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+  const SATNOGS_TRANSMITTER_MAX_RECORDS = 500;
+  const SATNOGS_TRANSMITTER_ATTRIBUTION = 'Radio metadata from SatNOGS Transmitter DB (CC BY-SA 4.0)';
+
+  let satnogsTransmitterCache = {
+    timestamp: 0,
+    totalRecords: 0,
+    recordsByNorad: {},
+    lastError: null,
+  };
+
+  let satnogsTransmitterFetchInFlight = false;
+
+  const isSatnogsTransmitterMetadataStale = () =>
+    !satnogsTransmitterCache.timestamp ||
+    Date.now() - satnogsTransmitterCache.timestamp >= SATNOGS_TRANSMITTER_CACHE_DURATION;
+
+  const formatHzAsMHz = (value) => {
+    const hz = Number(value);
+    if (!Number.isFinite(hz) || hz <= 0) return '';
+    return (hz / 1000000).toFixed(3) + ' MHz';
+  };
+
+  const formatHzRangeAsMHz = (low, high) => {
+    const lowNum = Number(low);
+    const highNum = Number(high);
+    const lowStr = formatHzAsMHz(low);
+    const highStr = formatHzAsMHz(high);
+
+    if (!lowStr && !highStr) return '';
+    if (lowStr && (!highStr || lowNum === highNum)) return lowStr;
+    if (!lowStr) return highStr;
+
+    return lowStr.replace(' MHz', '') + ' - ' + highStr;
+  };
+
+  const uniqueCompactList = (values, maxItems = 4) => {
+    const unique = [];
+
+    values
+      .map((v) => String(v || '').trim())
+      .filter(Boolean)
+      .forEach((v) => {
+        if (!unique.includes(v)) unique.push(v);
+      });
+
+    if (unique.length <= maxItems) return unique.join(', ');
+    return unique.slice(0, maxItems).join(', ') + ' +' + (unique.length - maxItems) + ' more';
+  };
+
+  const describeSatnogsMode = (tx) => {
+    const mode = String(tx.mode || '').trim();
+    const type = String(tx.type || '').trim();
+    const description = String(tx.description || '').trim();
+
+    const downlinkLow = Number(tx.downlink_low);
+    const downlinkHigh = Number(tx.downlink_high);
+    const uplinkLow = Number(tx.uplink_low);
+    const uplinkHigh = Number(tx.uplink_high);
+
+    const hasDownlinkRange =
+      Number.isFinite(downlinkLow) &&
+      Number.isFinite(downlinkHigh) &&
+      downlinkLow > 0 &&
+      downlinkHigh > 0 &&
+      downlinkLow !== downlinkHigh;
+
+    const hasUplinkRange =
+      Number.isFinite(uplinkLow) &&
+      Number.isFinite(uplinkHigh) &&
+      uplinkLow > 0 &&
+      uplinkHigh > 0 &&
+      uplinkLow !== uplinkHigh;
+
+    const combined = [mode, type, description].join(' ').toLowerCase();
+
+    // SatNOGS may report the sideband used within a linear transponder as
+    // USB/LSB. For OHC's compact popup, a paired uplink/downlink frequency
+    // range is more usefully displayed as "Linear", matching the existing
+    // curated satellite metadata.
+    if (combined.includes('linear') || (hasDownlinkRange && hasUplinkRange)) {
+      return 'Linear';
+    }
+
+    const baud = Number(tx.baud);
+
+    if (mode && Number.isFinite(baud) && baud > 0 && !mode.includes(String(baud))) {
+      return mode + ' ' + baud + ' baud';
+    }
+
+    return mode || type;
+  };
+  const scoreSatnogsTransmitter = (tx) => {
+    const mode = String(tx.mode || '').toLowerCase();
+    const type = String(tx.type || '').toLowerCase();
+    const description = String(tx.description || '').toLowerCase();
+
+    const hasDownlink = Boolean(tx.downlink_low || tx.downlink_high);
+    const hasUplink = Boolean(tx.uplink_low || tx.uplink_high);
+
+    let score = 0;
+
+    // For the popup, prefer an actual radio path the operator can use.
+    // Telemetry-only/data beacons are useful metadata, but they should not
+    // crowd out an FM or linear transponder entry when one exists.
+    if (hasDownlink && hasUplink) score += 600;
+    else if (hasDownlink) score += 100;
+
+    if (type.includes('transceiver')) score += 350;
+    if (type.includes('transponder')) score += 300;
+    if (description.includes('transponder')) score += 250;
+    if (description.includes('linear')) score += 250;
+
+    if (mode.includes('linear')) score += 250;
+    if (mode.includes('ssb') || mode.includes('usb') || mode.includes('lsb')) score += 220;
+    if (mode.includes('fm')) score += 180;
+
+    if (mode.includes('cw')) score += hasUplink ? 80 : -10;
+
+    if (
+      mode.includes('fsk') ||
+      mode.includes('bpsk') ||
+      mode.includes('gmsk') ||
+      mode.includes('afsk') ||
+      mode.includes('doka') ||
+      mode.includes('telemetry') ||
+      description.includes('telemetry') ||
+      description.includes('beacon')
+    ) {
+      score -= hasUplink ? 25 : 125;
+    }
+
+    const updated = Date.parse(tx.updated || '');
+    if (Number.isFinite(updated)) score += Math.min(20, Math.floor(updated / 100000000000));
+
+    return score;
+  };
+
+  const activeSatnogsTransmitters = (transmitters) =>
+    (Array.isArray(transmitters) ? transmitters : [])
+      .filter((tx) => {
+        const status = String(tx.status || '').toLowerCase();
+        const alive = tx.alive === true || tx.alive === 'true';
+        return status === 'active' && alive;
+      })
+      .sort((a, b) => scoreSatnogsTransmitter(b) - scoreSatnogsTransmitter(a));
+  const buildSatnogsRadioMetadata = (transmitters) => {
+    const selected = activeSatnogsTransmitters(transmitters);
+    if (selected.length === 0) return null;
+
+    // Show one best/primary transmitter in the UI. SatNOGS often lists
+    // multiple active entries for the same satellite: telemetry beacons,
+    // data downlinks, CW beacons, and transponders. Listing all of them in
+    // the compact popup makes the radio metadata hard to use.
+    const best = selected[0];
+
+    const updatedTimes = selected.map((tx) => Date.parse(tx.updated || '')).filter((ts) => Number.isFinite(ts));
+
+    const metadata = {
+      satnogs: {
+        source: 'SatNOGS Transmitter DB',
+        transmitterCount: selected.length,
+        selectedTransmitter: best.uuid || best.description || best.mode || best.type || null,
+        updated: updatedTimes.length > 0 ? new Date(Math.max(...updatedTimes)).toISOString() : null,
+        attribution: SATNOGS_TRANSMITTER_ATTRIBUTION,
+      },
+      radioMetadataAttribution: SATNOGS_TRANSMITTER_ATTRIBUTION,
+    };
+
+    if (selected.length > 1) {
+      metadata.satnogs.alternateTransmitterCount = selected.length - 1;
+    }
+
+    const mode = describeSatnogsMode(best);
+    const downlink = formatHzRangeAsMHz(best.downlink_low, best.downlink_high);
+    const uplink = formatHzRangeAsMHz(best.uplink_low, best.uplink_high);
+    const tone = String(best.tone || best.uplink_tone || best.downlink_tone || '').trim();
+
+    if (mode) metadata.mode = mode;
+    if (downlink) metadata.downlink = downlink;
+    if (uplink) metadata.uplink = uplink;
+    if (tone) metadata.tone = tone;
+
+    return metadata;
+  };
+
+  const fetchSatnogsTransmittersForNorad = async (noradId) => {
+    const directBase = 'https://db.satnogs.org/api/transmitters/';
+    const proxyBase = FLETCHER_URL ? FLETCHER_URL.replace(/\/$/, '') + '/satnogs/api/transmitters/' : null;
+
+    const bases = proxyBase ? [proxyBase, directBase] : [directBase];
+
+    for (const base of bases) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const url = base + '?format=json&satellite__norad_cat_id=' + encodeURIComponent(String(noradId));
+
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'OpenHamClock/' + APP_VERSION },
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          continue;
+        }
+
+        const json = await res.json();
+        const transmitters = Array.isArray(json) ? json : Array.isArray(json.results) ? json.results : [];
+
+        return transmitters;
+      } catch {
+        // Try the next base URL, if any.
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    return [];
+  };
+
+  const applySatnogsMetadataToRegistry = (recordsByNorad) => {
+    let applied = 0;
+
+    Object.entries(recordsByNorad || {}).forEach(([norad, transmitters]) => {
+      const metadata = buildSatnogsRadioMetadata(transmitters);
+      if (!metadata) return;
+
+      const target = Object.values(HAM_SATELLITES).find((sat) => String(sat.norad) === String(norad));
+      if (!target) return;
+
+      const existingNotes = String(target.notes || '').trim();
+      if (existingNotes && !existingNotes.includes('SatNOGS Transmitter DB')) {
+        metadata.notes = existingNotes + ' ' + SATNOGS_TRANSMITTER_ATTRIBUTION;
+      } else if (!existingNotes) {
+        metadata.notes = SATNOGS_TRANSMITTER_ATTRIBUTION;
+      }
+
+      Object.assign(target, metadata);
+
+      Object.values(ommCache || {}).forEach((entry) => {
+        if (String(entry.norad) === String(norad)) {
+          Object.assign(entry, metadata);
+        }
+      });
+
+      applied++;
+    });
+
+    return applied;
+  };
+
+  const refreshSatnogsTransmitterMetadata = async (force = false) => {
+    if (satnogsTransmitterFetchInFlight) return;
+    if (!force && !isSatnogsTransmitterMetadataStale()) return;
+
+    satnogsTransmitterFetchInFlight = true;
+
+    try {
+      const norads = [
+        ...new Set(
+          Object.values(HAM_SATELLITES)
+            .map((sat) => Number(sat.norad))
+            .filter((norad) => Number.isFinite(norad) && norad > 0),
+        ),
+      ].sort((a, b) => a - b);
+
+      const recordsByNorad = {};
+      let totalRecords = 0;
+
+      for (const norad of norads) {
+        if (totalRecords >= SATNOGS_TRANSMITTER_MAX_RECORDS) break;
+
+        const transmitters = await fetchSatnogsTransmittersForNorad(norad);
+        if (transmitters.length > 0) {
+          const room = SATNOGS_TRANSMITTER_MAX_RECORDS - totalRecords;
+          recordsByNorad[norad] = transmitters.slice(0, room);
+          totalRecords += recordsByNorad[norad].length;
+        }
+      }
+
+      satnogsTransmitterCache = {
+        timestamp: Date.now(),
+        totalRecords,
+        recordsByNorad,
+        lastError: null,
+      };
+
+      const applied = applySatnogsMetadataToRegistry(recordsByNorad);
+
+      if (applied > 0) {
+        logInfo(
+          '[Satellites] SatNOGS transmitter metadata updated: ' +
+            applied +
+            ' satellites, ' +
+            totalRecords +
+            ' transmitter records',
+        );
+      } else {
+        logWarn('[Satellites] SatNOGS transmitter metadata refresh completed with no matching active transmitters');
+      }
+    } catch (ex) {
+      const msg = ex?.message || String(ex ?? '(unknown error)');
+      satnogsTransmitterCache.lastError = msg;
+      logWarn('[Satellites] SatNOGS transmitter metadata refresh failed: ' + msg);
+    } finally {
+      satnogsTransmitterFetchInFlight = false;
+    }
+  };
+
   const fetchOmmFromCelesTrakGroups = async (group) => {
     let httpStatusCode = 0;
     let ommJson = {};
@@ -764,6 +1077,14 @@ module.exports = function (app, ctx) {
     sm.run();
   }, 15 * 1000);
 
+  // Refresh SatNOGS radio metadata in the background. This is deliberately
+  // independent of the TLE/OMM state machine because transmitter metadata
+  // changes much less frequently than orbital data.
+  refreshSatnogsTransmitterMetadata(false);
+  setInterval(() => {
+    refreshSatnogsTransmitterMetadata(false);
+  }, SATNOGS_TRANSMITTER_CACHE_DURATION);
+
   // satellites with a CelesTrak datasource that need data
   const celestrakSatsToDownload = (now) => {
     return Object.values(HAM_SATELLITES).filter(
@@ -890,6 +1211,12 @@ module.exports = function (app, ctx) {
       .sort((a, b) => a.norad - b.norad);
 
     res.json({
+      satnogsTransmitters: {
+        lastFetchAt: satnogsTransmitterCache.timestamp || null,
+        totalRecords: satnogsTransmitterCache.totalRecords || 0,
+        lastError: satnogsTransmitterCache.lastError || null,
+        attribution: SATNOGS_TRANSMITTER_ATTRIBUTION,
+      },
       totalInRegistry: Object.keys(HAM_SATELLITES).length,
       totalResolved: Object.keys(cached).length,
       totalMissing: all.filter((s) => !s.resolved).length,
