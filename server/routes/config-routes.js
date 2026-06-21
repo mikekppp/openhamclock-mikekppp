@@ -1,5 +1,5 @@
 /**
- * Configuration routes — /api/config, /api/settings, /api/version, /api/weather.
+ * Configuration routes â€” /api/config, /api/settings, /api/version, /api/weather.
  * Lines ~10701-10887 of original server.js
  */
 
@@ -21,26 +21,128 @@ module.exports = function (app, ctx) {
     configJsonPath,
     isQRZConfigured,
     WSJTX_RELAY_KEY,
-  } = ctx;
+  } = ctx; // <--- Make sure this is exactly a closing brace, equals sign, ctx, and semicolon
 
   // ============================================
-  // CONFIGURATION ENDPOINT
+  // N3FJP BRIDGE CONFIGURATION & PROCESS MANAGER
   // ============================================
+  // N3FJP BRIDGE CONFIGURATION & PROCESS MANAGER
+  // ============================================
+  const net = require('net');
+  const { fork } = require('child_process');
 
-  // Lightweight version check (for auto-refresh polling)
-  app.get('/api/version', (req, res) => {
-    res.set('Cache-Control', 'no-cache, no-store');
-    res.json({ version: APP_VERSION });
+  let runningBridgeProcess = null;
+
+  // ⚡ SMART AUTO-START: Only boot if explicitly saved as true in config
+  try {
+    const configPath = path.join(ROOT_DIR, 'config.json');
+    if (fs.existsSync(configPath)) {
+      const diskConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (diskConfig.n3fjpEnabled === true && !runningBridgeProcess) {
+        const startupBridgePath = path.join(ROOT_DIR, 'scripts', 'n3fjp-bridge.js');
+        if (fs.existsSync(startupBridgePath)) {
+          logInfo('🔌 [Startup] N3FJP is enabled on disk. Initializing background bridge script...');
+          runningBridgeProcess = fork(startupBridgePath);
+          runningBridgeProcess.on('error', (err) => logErrorOnce(`❌ Bridge error: ${err.message}`));
+        }
+      }
+    }
+  } catch (e) { logWarn(`Failed to parse startup config: ${e.message}`); }
+
+  app.post('/api/n3fjp/configure', async (req, res) => {
+    const { host, port, enabled } = req.body;
+
+    if (!host || !port) {
+      return res.status(400).json({ success: false, error: 'Missing host or port' });
+    }
+
+    const isEnabled = !!enabled;
+
+    // 💾 STEP 1: ALWAYS PERSIST TO DISK IMMEDIATELY (Fixes the 127.0.0.1 reset loop)
+    try {
+      const configPath = path.join(ROOT_DIR, 'config.json');
+      let currentConfigData = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {};
+      
+      currentConfigData.n3fjpHost = host;
+      currentConfigData.n3fjpPort = parseInt(port, 10);
+      currentConfigData.n3fjpEnabled = isEnabled;
+
+      fs.writeFileSync(configPath, JSON.stringify(currentConfigData, null, 2), 'utf8');
+      
+      // Update running environment context variables
+      ctx.N3FJP_SERVER_HOST = host;
+      ctx.N3FJP_SERVER_PORT = parseInt(port, 10);
+      ctx.N3FJP_ENABLED = isEnabled;
+    } catch (saveError) {
+      logWarn(`Failed to write parameters to disk: ${saveError.message}`);
+    }
+
+    // 🛑 STEP 2: MANAGE SCRIPT BACKGROUND LIFECYCLE
+    if (!isEnabled) {
+      if (runningBridgeProcess) {
+        logInfo('📡 UI Toggle: Turning OFF N3FJP Bridge. Terminating script process...');
+        runningBridgeProcess.kill();
+        runningBridgeProcess = null;
+      }
+      return res.json({ success: true, message: 'Configuration saved. Background bridge deactivated.' });
+    }
+
+    // 🔄 STEP 3: IF TOGGLED ON -> REBOOT REFRESHED PROCESS & RUN LIVE DIAGNOSTIC PING
+    if (runningBridgeProcess) {
+      logInfo('🔄 Bridge configuration updated. Refreshing background worker thread...');
+      runningBridgeProcess.kill();
+      runningBridgeProcess = null;
+    }
+
+    const bridgeScriptPath = path.join(ROOT_DIR, 'scripts', 'n3fjp-bridge.js');
+    if (fs.existsSync(bridgeScriptPath)) {
+      // 🚀 Pass the explicit UI values directly to the process env!
+      runningBridgeProcess = fork(bridgeScriptPath, [], {
+        env: {
+          ...process.env,
+          N3FJP_TARGET_HOST: host,
+          N3FJP_TARGET_PORT: String(port)
+        }
+      });
+      runningBridgeProcess.on('error', (err) => logErrorOnce(`❌ Background bridge thread threw an error: ${err.message}`));
+    }
+
+    // Run connection test to alert the UI user if their logging software isn't running yet
+    logInfo(`N3FJP Bridge: Diagnostic ping running to verify station at ${host}:${port}...`);
+    const testSocket = new net.Socket();
+    let hasResponded = false;
+    testSocket.setTimeout(2500);
+
+    testSocket.on('connect', () => {
+      hasResponded = true;
+      testSocket.destroy();
+      res.json({ success: true, message: 'Saved successfully! Reached N3FJP logging client on station network.' });
+    });
+
+    testSocket.on('error', (err) => {
+      if (!hasResponded) {
+        hasResponded = true;
+        res.json({ success: true, message: 'Saved successfully! (Note: Station client currently unreachable or offline.)' });
+      }
+    });
+
+    testSocket.on('timeout', () => {
+      if (!hasResponded) {
+        hasResponded = true;
+        testSocket.destroy();
+        res.json({ success: true, message: 'Saved successfully! (Note: Station client connection timed out.)' });
+      }
+    });
+
+    testSocket.connect(parseInt(port, 10), host);
   });
-
-  // ============================================
   // USER SETTINGS SYNC (SERVER-SIDE PERSISTENCE)
   // ============================================
   // Stores all UI settings (layout, panels, filters, etc.) on the server
   // so they persist across all devices accessing the same OHC instance.
-  // ONLY for self-hosted/Pi deployments — disabled by default.
+  // ONLY for self-hosted/Pi deployments â€” disabled by default.
   // Enable with SETTINGS_SYNC=true in .env
-  // On multi-user hosted deployments (openhamclock.com), leave disabled —
+  // On multi-user hosted deployments (openhamclock.com), leave disabled â€”
   // settings stay in each user's browser localStorage.
 
   const SETTINGS_SYNC_ENABLED = (process.env.SETTINGS_SYNC || '').toLowerCase() === 'true';
@@ -70,7 +172,7 @@ module.exports = function (app, ctx) {
   }
 
   const SETTINGS_FILE = getSettingsFilePath();
-  if (SETTINGS_SYNC_ENABLED && SETTINGS_FILE) logInfo(`[Settings] ✓ Sync enabled, using: ${SETTINGS_FILE}`);
+  if (SETTINGS_SYNC_ENABLED && SETTINGS_FILE) logInfo(`[Settings] âœ“ Sync enabled, using: ${SETTINGS_FILE}`);
   else if (SETTINGS_SYNC_ENABLED) logWarn('[Settings] Sync enabled but no writable path found');
   else logInfo('[Settings] Sync disabled (set SETTINGS_SYNC=true in .env to enable)');
 
@@ -99,7 +201,7 @@ module.exports = function (app, ctx) {
     }
   }
 
-  // GET /api/settings — return saved UI settings (or 404 if sync disabled)
+  // GET /api/settings â€” return saved UI settings (or 404 if sync disabled)
   app.get('/api/settings', (req, res) => {
     if (!SETTINGS_SYNC_ENABLED) {
       return res.status(404).json({ enabled: false });
@@ -108,7 +210,7 @@ module.exports = function (app, ctx) {
     res.json(settings || {});
   });
 
-  // POST /api/settings — save UI settings (or 404 if sync disabled)
+  // POST /api/settings â€” save UI settings (or 404 if sync disabled)
   app.post('/api/settings', writeLimiter, requireWriteAuth, (req, res) => {
     if (!SETTINGS_SYNC_ENABLED) {
       return res.status(404).json({ enabled: false });
@@ -118,10 +220,13 @@ module.exports = function (app, ctx) {
       return res.status(400).json({ error: 'Invalid settings object' });
     }
 
-    // Only allow openhamclock_* and ohc_* keys (security: prevent arbitrary data injection)
+    // Only allow openhamclock_*, ohc_*, and custom n3fjp keys
     const filtered = {};
     for (const [key, value] of Object.entries(settings)) {
-      if ((key.startsWith('openhamclock_') || key.startsWith('ohc_')) && typeof value === 'string') {
+      if (
+        (key.startsWith('openhamclock_') || key.startsWith('ohc_') || key.startsWith('n3fjp')) && 
+        (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number')
+      ) {
         filtered[key] = value;
       }
     }
@@ -165,6 +270,12 @@ module.exports = function (app, ctx) {
       showContests: CONFIG.showContests,
       showDXpeditions: CONFIG.showDXpeditions,
 
+      // N3FJP Log Integration
+      n3fjpEnabled: ctx.N3FJP_ENABLED,
+      n3fjpHost: ctx.N3FJP_SERVER_HOST,
+      n3fjpPort: ctx.N3FJP_SERVER_PORT,
+      n3fjpRetentionMinutes: ctx.N3FJP_QSO_RETENTION_MINUTES,
+
       // DX Cluster settings
       spotRetentionMinutes: CONFIG.spotRetentionMinutes,
       dxClusterSource: CONFIG.dxClusterSource,
@@ -185,7 +296,7 @@ module.exports = function (app, ctx) {
           return tz;
         } catch (e) {
           console.warn(
-            '[config] Invalid resolved timezone "%s" — falling back to empty (client will use browser TZ). Set TZ env var to silence.',
+            '[config] Invalid resolved timezone "%s" â€” falling back to empty (client will use browser TZ). Set TZ env var to silence.',
             tz,
           );
           return '';
