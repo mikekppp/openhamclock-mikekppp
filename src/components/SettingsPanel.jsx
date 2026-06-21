@@ -113,6 +113,7 @@ export const SettingsPanel = ({
   const [wsjtxMulticastAddress, setWsjtxMulticastAddress] = useState(
     config?.wsjtxRelayMulticast.address || '224.0.0.1',
   );
+
   // Local-only integration flags
   const [n3fjpEnabled, setN3fjpEnabled] = useState(() => {
     try {
@@ -121,6 +122,24 @@ export const SettingsPanel = ({
       return false;
     }
   });
+  const [n3fjpHost, setN3fjpHost] = useState(() => {
+    try {
+      return localStorage.getItem('ohc_n3fjp_host') || 'localhost';
+    } catch {
+      return 'localhost';
+    }
+  });
+
+  const [n3fjpPort, setN3fjpPort] = useState(() => {
+    try {
+      return localStorage.getItem('ohc_n3fjp_port') || '1100';
+    } catch {
+      return '1100';
+    }
+  });
+
+  const [n3fjpTesting, setN3fjpTesting] = useState(false);
+  const [n3fjpMessage, setN3fjpMessage] = useState(null);
 
   // DX Weather (local-only)
   const [dxWeatherEnabled, setDxWeatherEnabled] = useState(() => {
@@ -154,6 +173,12 @@ export const SettingsPanel = ({
       return '#ffaa00';
     }
   });
+
+  // N3FJP BACKEND CONFIG STATES
+  // (Disabled here because they are already declared elsewhere in this file)
+  // const [n3fjpHost, setN3fjpHost] = useState('127.0.0.1');
+  // const [n3fjpPort, setN3fjpPort] = useState('1100');
+  const [n3fjpBridgeActive, setN3fjpBridgeActive] = useState(false);
 
   // Monospace font for panels/data displays (#923 — 0/8 readability)
   const [monoFont, setMonoFont] = useState(() => {
@@ -272,22 +297,28 @@ export const SettingsPanel = ({
     }
   }, [isOpen]);
 
-  // Keep N3FJP toggle/settings in sync with localStorage when opening settings
+  // Keep N3FJP toggle/settings in sync with config/localStorage when opening settings
   useEffect(() => {
     if (!isOpen) return;
     try {
-      setN3fjpEnabled(localStorage.getItem('ohc_n3fjp_enabled') === '1');
+      const localEnabled = localStorage.getItem('ohc_n3fjp_enabled');
+      setN3fjpEnabled(localEnabled !== null ? localEnabled === '1' : !!config?.n3fjpEnabled);
+      setN3fjpHost(localStorage.getItem('ohc_n3fjp_host') || config?.n3fjpHost || '127.0.0.1');
+      setN3fjpPort(localStorage.getItem('ohc_n3fjp_port') || (config?.n3fjpPort ? String(config.n3fjpPort) : '1100'));
+      
       const v = parseInt(localStorage.getItem('n3fjp_display_minutes') || '15', 10);
       setN3fjpDisplayMinutes(Number.isFinite(v) ? v : 15);
       setN3fjpLineColor(localStorage.getItem('n3fjp_line_color') || '#3388ff');
       setN3fjpPreviewLineColor(localStorage.getItem('n3fjp_preview_line_color') || '#ffaa00');
     } catch {
-      setN3fjpEnabled(false);
+      setN3fjpEnabled(!!config?.n3fjpEnabled || false);
+      setN3fjpHost(config?.n3fjpHost || '127.0.0.1');
+      setN3fjpPort(config?.n3fjpPort ? String(config.n3fjpPort) : '1100');
       setN3fjpDisplayMinutes(15);
       setN3fjpLineColor('#3388ff');
       setN3fjpPreviewLineColor('#ffaa00');
     }
-  }, [isOpen]);
+  }, [isOpen, config]);
 
   // Load layers when panel opens
   useEffect(() => {
@@ -508,6 +539,10 @@ export const SettingsPanel = ({
         // cloudRelaySession intentionally omitted — session ID belongs in
         // localStorage (per-browser), not in the shared server config.
       },
+      n3fjpHost: String(n3fjpHost || '').trim() || '127.0.0.1',
+      n3fjpPort: parseInt(n3fjpPort, 10) || 1100,
+      n3fjpEnabled: !!n3fjpEnabled,
+      n3fjpBridgeActive: !!n3fjpBridgeActive, // 👈 Add this right here!
     });
   };
 
@@ -2823,6 +2858,187 @@ export const SettingsPanel = ({
                     </label>
                   </div>
 
+                  {/* 🟢 NEW CONNECTION FIELDS INSERTED HERE */}
+
+{/* Background Bridge Activation Row */}
+<div 
+  style={{ 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: 8, 
+    marginBottom: 10,
+    opacity: n3fjpEnabled ? 1 : 0.5 
+  }}
+>
+  <input
+    type="checkbox"
+    id="n3fjpBridgeActiveToggle"
+    disabled={!isLocalInstall || !n3fjpEnabled}
+    checked={!!n3fjpBridgeActive && n3fjpEnabled}
+    onChange={(e) => {
+      const nextActive = !!e.target.checked;
+      setN3fjpBridgeActive(nextActive);
+      
+      try {
+        fetch('/api/n3fjp/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enabled: n3fjpEnabled,
+            bridgeActive: nextActive,
+            host: String(n3fjpHost || '').trim(),
+            port: parseInt(n3fjpPort, 10) || 1100
+          })
+        });
+      } catch (err) {
+        console.error("Failed to signal bridge state change:", err);
+      }
+    }}
+  />
+  <label
+    htmlFor="n3fjpBridgeActiveToggle"
+    style={{
+      fontSize: '12px',
+      color: 'var(--text-secondary)',
+      fontWeight: 'bold',
+      cursor: (isLocalInstall && n3fjpEnabled) ? 'pointer' : 'default'
+    }}
+  >
+    Activate local background connection bridge (n3fjp-bridge.js)
+  </label>
+</div>
+
+{/* This is your existing flex container for Host/Port that you showed me */}
+<div
+  style={{
+    display: 'flex',
+    gap: '8px',
+    marginTop: '12px',
+    marginBottom: '4px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  }}
+>
+  <label
+    style={{
+      fontSize: '12px',
+      color: 'var(--text-secondary)',
+      fontWeight: 'bold',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    N3FJP Host:
+  </label>
+  <input
+    disabled={!isLocalInstall || !n3fjpEnabled}
+    type="text"
+    placeholder="Host IP / Computer Name (e.g., localhost)"
+    value={n3fjpHost}
+    onChange={(e) => setN3fjpHost(e.target.value)}
+    style={{
+      flex: '2 1 180px',
+      padding: '8px 12px',
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-color)',
+      borderRadius: '4px',
+      color: 'var(--text-primary)',
+      fontSize: '12px',
+      fontFamily: 'var(--font-mono)',
+      boxSizing: 'border-box',
+      opacity: n3fjpEnabled ? 1 : 0.5,
+    }}
+  />
+
+  <label
+    style={{
+      fontSize: '12px',
+      color: 'var(--text-secondary)',
+      fontWeight: 'bold',
+      whiteSpace: 'nowrap',
+      marginLeft: '8px',
+    }}
+  >
+    Port:
+  </label>
+                    <input
+                      disabled={!isLocalInstall || !n3fjpEnabled}
+                      type="text"
+                      placeholder="Port (1100)"
+                      value={n3fjpPort}
+                      onChange={(e) => setN3fjpPort(e.target.value)}
+                      style={{
+                        flex: '1 1 80px',
+                        padding: '8px 12px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-mono)',
+                        boxSizing: 'border-box',
+                        opacity: n3fjpEnabled ? 1 : 0.5,
+                      }}
+                    />
+                    <button
+                      disabled={!isLocalInstall || n3fjpTesting || (n3fjpEnabled && (!n3fjpHost.trim() || !n3fjpPort.trim()))}
+                      onClick={async () => {
+                        setN3fjpTesting(true);
+                        setN3fjpMessage(null);
+                        try {
+                          const res = await fetch('/api/n3fjp/configure', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+  host: String(n3fjpHost || '').trim(), 
+  port: String(n3fjpPort || '').trim(),
+  enabled: !!n3fjpEnabled,
+  bridgeActive: !!n3fjpBridgeActive 
+}),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setN3fjpMessage({ type: 'success', text: 'Bridge configuration updated!' });
+                          } else {
+                            setN3fjpMessage({ type: 'error', text: data.error || 'Connection failed' });
+                          }
+                        } catch (e) {
+                          setN3fjpMessage({ type: 'error', text: 'Bridge communication error' });
+                        }
+                        setN3fjpTesting(false);
+                      }}
+                      style={{
+                        padding: '8px 14px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        borderRadius: '4px',
+                        border: 'none',
+                        cursor:
+                          !isLocalInstall || n3fjpTesting || (n3fjpEnabled && (!n3fjpHost.trim() || !n3fjpPort.trim()))
+                            ? 'not-allowed'
+                            : 'pointer',
+                        background: 'var(--accent-amber)',
+                        color: '#000',
+                        opacity: !isLocalInstall || n3fjpTesting || (n3fjpEnabled && (!n3fjpHost.trim() || !n3fjpPort.trim())) ? 0.5 : 1,
+                      }}
+                    >
+                      {n3fjpTesting ? 'Testing...' : 'Save & Test'}
+                    </button>
+                  </div>
+
+                  {n3fjpMessage && (
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        padding: '2px 4px',
+                        color: n3fjpMessage.type === 'success' ? '#2ecc71' : '#e74c3c',
+                        marginTop: '4px',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      {n3fjpMessage.type === 'success' ? '✓' : '✗'} {n3fjpMessage.text}
+                    </div>
+                  )}
+
                   {/* Simple config */}
                   <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 160px' }}>
@@ -2950,74 +3166,15 @@ export const SettingsPanel = ({
 
                   <details style={{ marginTop: 10 }}>
                     <summary
-                      style={{
-                        cursor: 'pointer',
-                        color: 'var(--accent-amber)',
-                        fontSize: 12,
-                        userSelect: 'none',
-                      }}
+                      style={{ cursor: 'pointer', color: 'var(--accent-amber)', fontSize: 12, userSelect: 'none' }}
                     >
                       Learn how
                     </summary>
-
                     <div
-                      style={{
-                        marginTop: 8,
-                        color: 'var(--text-secondary)',
-                        fontSize: 12,
-                        lineHeight: 1.55,
-                      }}
+                      style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: '11px', lineHeight: '1.4' }}
                     >
-                      <div style={{ marginBottom: 6 }}>
-                        <b>Quick start (Local Only):</b>
-                      </div>
-
-                      <ol style={{ margin: 0, paddingLeft: 18 }}>
-                        <li>
-                          Run OpenHamClock locally:
-                          <div style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>npm start</div>
-                          Open the local URL shown in your terminal (example: http://127.0.0.1:3001).
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Install the N3FJP bridge on the same PC (or LAN machine) that can access your N3FJP logger.
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Edit the bridge <b>config.json</b> file and set:
-                          <div style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>
-                            "OHC_BASE_URL": "http://127.0.0.1:3001"
-                          </div>
-                          (Use the exact URL printed by OpenHamClock.)
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Ensure:
-                          <div style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>"ENABLE_OHC_HTTP": true</div>
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Start the bridge script (PowerShell or VBS launcher). You should see log messages when QSOs
-                          are entered.
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Enable this integration here, then turn on
-                          <b> Logged QSOs (N3FJP)</b> in
-                          <b> Settings → Map Layers</b>.
-                        </li>
-                      </ol>
-
-                      <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
-                        Tip: If you see “connection refused,” verify that OpenHamClock is running locally and that the
-                        port matches your
-                        <b> OHC_BASE_URL</b> setting.
-                      </div>
-
-                      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-                        Note: This integration cannot work on the hosted site because it requires access to your local
-                        N3FJP logger and LAN services.
-                      </div>
+                      Ensure TCP API is enabled in N3FJP (Settings &gt; API &gt; TCP Server). Match host IP and port
+                      settings.
                     </div>
                   </details>
                 </div>
@@ -3041,7 +3198,7 @@ export const SettingsPanel = ({
                       gap: '8px',
                     }}
                   >
-                    <span>📡 QRZ.com Callsign Lookup</span>
+                    <span>📻 QRZ.com Callsign Lookup</span>
                     {qrzStatus?.configured && (
                       <span
                         style={{
