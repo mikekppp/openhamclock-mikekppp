@@ -88,6 +88,8 @@ module.exports = function (app, ctx) {
   // SatNOGS Transmitter DB radio metadata.
   const SATNOGS_TRANSMITTER_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
   const SATNOGS_TRANSMITTER_MAX_RECORDS = 500;
+  const SATNOGS_TRANSMITTER_REQUEST_TIMEOUT = 8000;
+  const SATNOGS_TRANSMITTER_CONCURRENCY = 4;
   const SATNOGS_TRANSMITTER_ATTRIBUTION = 'Radio metadata from SatNOGS Transmitter DB (CC BY-SA 4.0)';
 
   let satnogsTransmitterCache = {
@@ -98,6 +100,40 @@ module.exports = function (app, ctx) {
   };
 
   let satnogsTransmitterFetchInFlight = false;
+  const SATNOGS_OVERLAY_FIELDS = ['mode', 'downlink', 'uplink', 'tone', 'beacon', 'notes'];
+  const satnogsRegistryBaseMetadata = new Map();
+
+  const snapshotSatnogsBaseMetadata = (satellite) => {
+    const snapshot = {};
+    SATNOGS_OVERLAY_FIELDS.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(satellite, field)) {
+        snapshot[field] = satellite[field];
+      }
+    });
+    return snapshot;
+  };
+
+  const getSatnogsBaseMetadataForSatellite = (satellite) => {
+    const key = String(satellite?.norad || '');
+    if (!key) return {};
+    if (!satnogsRegistryBaseMetadata.has(key)) {
+      satnogsRegistryBaseMetadata.set(key, snapshotSatnogsBaseMetadata(satellite));
+    }
+    return satnogsRegistryBaseMetadata.get(key);
+  };
+
+  const restoreSatnogsBaseMetadata = (satellite, baseMetadata) => {
+    if (!satellite) return;
+    SATNOGS_OVERLAY_FIELDS.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(baseMetadata, field)) {
+        satellite[field] = baseMetadata[field];
+      } else {
+        delete satellite[field];
+      }
+    });
+    delete satellite.satnogs;
+    delete satellite.radioMetadataAttribution;
+  };
 
   const isSatnogsTransmitterMetadataStale = () =>
     !satnogsTransmitterCache.timestamp ||
@@ -280,7 +316,7 @@ module.exports = function (app, ctx) {
 
     for (const base of bases) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
+      const timeout = setTimeout(() => controller.abort(), SATNOGS_TRANSMITTER_REQUEST_TIMEOUT);
 
       try {
         const url = base + '?format=json&satellite__norad_cat_id=' + encodeURIComponent(String(noradId));
@@ -310,15 +346,35 @@ module.exports = function (app, ctx) {
 
   const applySatnogsMetadataToRegistry = (recordsByNorad) => {
     let applied = 0;
+    let cleared = 0;
 
     Object.entries(recordsByNorad || {}).forEach(([norad, transmitters]) => {
-      const metadata = buildSatnogsRadioMetadata(transmitters);
-      if (!metadata) return;
-
       const target = Object.values(HAM_SATELLITES).find((sat) => String(sat.norad) === String(norad));
       if (!target) return;
 
-      const existingNotes = String(target.notes || '').trim();
+      const baseMetadata = getSatnogsBaseMetadataForSatellite(target);
+      const metadata = buildSatnogsRadioMetadata(transmitters);
+
+      if (!metadata) {
+        let clearedThisNorad = false;
+
+        if (target.satnogs || target.radioMetadataAttribution) {
+          restoreSatnogsBaseMetadata(target, baseMetadata);
+          clearedThisNorad = true;
+        }
+
+        Object.values(ommCache || {}).forEach((entry) => {
+          if (String(entry.norad) === String(norad) && (entry.satnogs || entry.radioMetadataAttribution)) {
+            restoreSatnogsBaseMetadata(entry, baseMetadata);
+            clearedThisNorad = true;
+          }
+        });
+
+        if (clearedThisNorad) cleared++;
+        return;
+      }
+
+      const existingNotes = String(baseMetadata.notes || '').trim();
       if (existingNotes && !existingNotes.includes('SatNOGS Transmitter DB')) {
         metadata.notes = existingNotes + ' ' + SATNOGS_TRANSMITTER_ATTRIBUTION;
       } else if (!existingNotes) {
@@ -326,17 +382,15 @@ module.exports = function (app, ctx) {
       }
 
       Object.assign(target, metadata);
-
       Object.values(ommCache || {}).forEach((entry) => {
         if (String(entry.norad) === String(norad)) {
           Object.assign(entry, metadata);
         }
       });
-
       applied++;
     });
 
-    return applied;
+    return { applied, cleared };
   };
 
   const refreshSatnogsTransmitterMetadata = async (force = false) => {
@@ -344,7 +398,6 @@ module.exports = function (app, ctx) {
     if (!force && !isSatnogsTransmitterMetadataStale()) return;
 
     satnogsTransmitterFetchInFlight = true;
-
     try {
       const norads = [
         ...new Set(
@@ -357,14 +410,27 @@ module.exports = function (app, ctx) {
       const recordsByNorad = {};
       let totalRecords = 0;
 
-      for (const norad of norads) {
-        if (totalRecords >= SATNOGS_TRANSMITTER_MAX_RECORDS) break;
+      for (
+        let i = 0;
+        i < norads.length && totalRecords < SATNOGS_TRANSMITTER_MAX_RECORDS;
+        i += SATNOGS_TRANSMITTER_CONCURRENCY
+      ) {
+        const batch = norads.slice(i, i + SATNOGS_TRANSMITTER_CONCURRENCY);
+        const results = await Promise.all(
+          batch.map(async (norad) => ({
+            norad,
+            transmitters: await fetchSatnogsTransmittersForNorad(norad),
+          })),
+        );
 
-        const transmitters = await fetchSatnogsTransmittersForNorad(norad);
-        if (transmitters.length > 0) {
+        for (const { norad, transmitters } of results) {
+          const transmitterList = Array.isArray(transmitters) ? transmitters : [];
           const room = SATNOGS_TRANSMITTER_MAX_RECORDS - totalRecords;
-          recordsByNorad[norad] = transmitters.slice(0, room);
-          totalRecords += recordsByNorad[norad].length;
+          if (room <= 0) break;
+
+          const limitedTransmitters = transmitterList.slice(0, room);
+          recordsByNorad[norad] = limitedTransmitters;
+          totalRecords += limitedTransmitters.length;
         }
       }
 
@@ -375,15 +441,15 @@ module.exports = function (app, ctx) {
         lastError: null,
       };
 
-      const applied = applySatnogsMetadataToRegistry(recordsByNorad);
-
-      if (applied > 0) {
+      const { applied, cleared } = applySatnogsMetadataToRegistry(recordsByNorad);
+      if (applied > 0 || cleared > 0) {
         logInfo(
           '[Satellites] SatNOGS transmitter metadata updated: ' +
             applied +
             ' satellites, ' +
             totalRecords +
-            ' transmitter records',
+            ' transmitter records' +
+            (cleared > 0 ? ', ' + cleared + ' stale overlays cleared' : ''),
         );
       } else {
         logWarn('[Satellites] SatNOGS transmitter metadata refresh completed with no matching active transmitters');
@@ -1211,7 +1277,7 @@ module.exports = function (app, ctx) {
 
     res.json({
       satnogsTransmitters: {
-        ...(Number.isFinite(satnogsTransmitterCache.timestamp) && {
+        ...(satnogsTransmitterCache.timestamp > 0 && {
           lastFetch: formatSimpleAge(Date.now() - satnogsTransmitterCache.timestamp),
         }),
         totalRecords: satnogsTransmitterCache.totalRecords || 0,
