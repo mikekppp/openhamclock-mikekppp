@@ -1,16 +1,51 @@
 const net = require('net');
 const http = require('http');
 
-const N3FJP_PORT = 1100;
 const OHC_HOST = '127.0.0.1';
 const OHC_PORT = 3001;
+
+// N3FJP default placeholder coordinates for the 1st call district.
+const N3FJP_DEFAULT_LAT = 42.4;
+const N3FJP_DEFAULT_LON = -71.7;
+
+let N3FJP_HOST = '127.0.0.1';
+let N3FJP_PORT = 1100;
 
 const client = new net.Socket();
 client.setNoDelay(true); // Kills network buffering lag
 
-client.connect(N3FJP_PORT, '127.0.0.1', () => {
-  console.log('✅ Bridge Connected to N3FJP (Low-Latency Mode)');
-});
+// 💡 Fetch configuration dynamically from the database via your server's API
+function initBridge() {
+  http
+    .get(`http://${OHC_HOST}:${OHC_PORT}/api/settings`, (res) => {
+      let body = '';
+      res.on('data', (chunk) => (body += chunk));
+      res.on('end', () => {
+        try {
+          const settings = JSON.parse(body);
+          // Fallback checks for whatever key you named your integration fields
+          if (settings.n3fjp_host || settings.n3fjpIp) {
+            N3FJP_HOST = settings.n3fjp_host || settings.n3fjpIp;
+            N3FJP_PORT = parseInt(settings.n3fjp_port || settings.n3fjpPort, 10) || 1100;
+          }
+        } catch (e) {
+          console.log('ℹ️ Could not parse settings API response, using defaults.');
+        }
+
+        console.log(`📡 Attempting network connection to N3FJP at ${N3FJP_HOST}:${N3FJP_PORT}...`);
+        client.connect(N3FJP_PORT, N3FJP_HOST, () => {
+          console.log(`✅ Bridge Connected to N3FJP at ${N3FJP_HOST}:${N3FJP_PORT} (Low-Latency Mode)`);
+        });
+      });
+    })
+    .on('error', () => {
+      console.log('⚠️ Settings API unavailable yet. Connecting to local default...');
+      client.connect(N3FJP_PORT, N3FJP_HOST);
+    });
+}
+
+// Start the bridge initialization
+initBridge();
 
 let dataBuffer = '';
 
@@ -46,6 +81,13 @@ function parseAdifCoords(rawStr, isLongitude) {
     decimal = -decimal;
   }
 
+  // 💡 BOUNDS CHECK (Per K0CJH feedback): Ensure coordinates fall within valid ranges
+  if (isLongitude) {
+    if (decimal < -180 || decimal > 180) return 0;
+  } else {
+    if (decimal < -90 || decimal > 90) return 0;
+  }
+
   return decimal;
 }
 
@@ -73,6 +115,9 @@ function fetchTrueCallCoords(callsign) {
   });
 }
 
+// 💡 THE PREVIEW CACHE: Tracks coordinates between tabbing out and logging the contact
+const activePreviews = {};
+
 async function processN3FJPRecord(raw) {
   const getTag = (tag) => {
     const m = raw.match(new RegExp(`<${tag}>(.*?)</${tag}>`, 'i'));
@@ -86,23 +131,48 @@ async function processN3FJPRecord(raw) {
 
   if (!call && eventType !== 'clear') return;
 
+  // Handle clearing out the cache if you clear the contact window in N3FJP
+  if (isClearSignal && call) {
+    delete activePreviews[call];
+  }
+
   // Parse the raw incoming coordinates out of N3FJP
   const rawLat = getTag('LAT');
   const rawLon = getTag('LON');
   let lat = parseAdifCoords(rawLat, false);
   let lon = parseAdifCoords(rawLon, true);
 
-  // 🚨 THE CRITICAL INTERCEPTION:
-  // If N3FJP outputs its rigid 1st District placeholder, intercept it and find the real location!
-  if (lat === 42.4 && lon === -71.7 && call && !isClearSignal) {
-    const trueCoords = await fetchTrueCallCoords(call);
-    if (trueCoords) {
-      lat = trueCoords.lat;
-      lon = trueCoords.lon;
-    } else {
-      // If the database lookup hasn't found them yet, flag as 0,0 so the server handles it cleanly
-      lat = 0.0;
-      lon = 0.0;
+  const isPlaceholder = lat === N3FJP_DEFAULT_LAT && lon === N3FJP_DEFAULT_LON;
+  const isBlankCoords = lat === 0.0 && lon === 0.0;
+
+  // 📡 PREVIEW PHASE: Capture the accurate coordinates when you tab out
+  if (eventType === 'preview') {
+    if ((isPlaceholder || isBlankCoords) && call) {
+      const trueCoords = await fetchTrueCallCoords(call);
+      if (trueCoords) {
+        lat = trueCoords.lat;
+        lon = trueCoords.lon;
+      } else {
+        // Leave undefined so the OpenHamClock server falls back to grid/prefix matching
+        lat = undefined;
+        lon = undefined;
+      }
+    }
+    // Lock the working preview coordinates into memory
+    if (call) {
+      activePreviews[call] = { lat, lon };
+    }
+  }
+
+  // 📝 LOGGING PHASE: Lock in the preview position to defeat N3FJP's call-district overrides
+  if (eventType === 'log' && call) {
+    if (activePreviews[call]) {
+      lat = activePreviews[call].lat;
+      lon = activePreviews[call].lon;
+      delete activePreviews[call]; // Clean up memory
+    } else if (isPlaceholder || isBlankCoords) {
+      lat = undefined;
+      lon = undefined;
     }
   }
 
@@ -139,12 +209,12 @@ async function processN3FJPRecord(raw) {
   req.end();
 
   console.log(
-    `⚡ ${eventType === 'clear' ? '🗑️  CLEARED' : '📡 SENT'}: ${call || 'N/A'} (Lat: ${lat.toFixed(2)}, Lon: ${lon.toFixed(2)})`,
+    `⚡ ${eventType === 'clear' ? '🗑️  CLEARED' : eventType === 'preview' ? '📡 PREVIEW' : '💾 LOGGED'}: ${call || 'N/A'} (Lat: ${lat ? lat.toFixed(2) : 'AUTO'}, Lon: ${lon ? lon.toFixed(2) : 'AUTO'})`,
   );
 }
 
 client.on('error', (err) => console.error('❌ Socket Error:', err.message));
 client.on('close', () => {
-  console.log('📡 Connection to N3FJP closed. Retrying in 5s...');
-  setTimeout(() => client.connect(N3FJP_PORT, '127.0.0.1'), 5000);
+  console.log(`📡 Connection to N3FJP closed. Retrying to connect to ${N3FJP_HOST} in 5s...`);
+  setTimeout(() => client.connect(N3FJP_PORT, N3FJP_HOST), 5000);
 });
