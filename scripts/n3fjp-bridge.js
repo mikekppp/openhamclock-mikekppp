@@ -15,15 +15,8 @@ const N3FJP_DEFAULT_LON = -71.7;
 const client = new net.Socket();
 client.setNoDelay(true); // Kills network buffering lag
 
-// 💡 FIX: Use the dynamic N3FJP_HOST variable instead of the hardcoded '127.0.0.1' string!
 client.connect(N3FJP_PORT, N3FJP_HOST, () => {
   console.log(`✅ Bridge Connected to N3FJP at ${N3FJP_HOST}:${N3FJP_PORT} (Low-Latency Mode)`);
-});
-const client = new net.Socket();
-client.setNoDelay(true); // Kills network buffering lag
-
-client.connect(N3FJP_PORT, '127.0.0.1', () => {
-  console.log('✅ Bridge Connected to N3FJP (Low-Latency Mode)');
 });
 
 let dataBuffer = '';
