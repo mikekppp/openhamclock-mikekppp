@@ -1,15 +1,24 @@
 const net = require('net');
 const http = require('http');
 
-const N3FJP_PORT = 1100;
-const OHC_HOST = '127.0.0.1';
-const OHC_PORT = 3001;
+// Dynamic settings passed from the OpenHamClock Integrations UI page
+const N3FJP_HOST = process.env.N3FJP_HOST || '127.0.0.1';
+const N3FJP_PORT = parseInt(process.env.N3FJP_PORT, 10) || 1100;
+
+const OHC_HOST = process.env.OHC_HOST || '127.0.0.1';
+const OHC_PORT = parseInt(process.env.OHC_PORT, 10) || 3001;
 
 // N3FJP default placeholder coordinates for the 1st call district.
-// Used as a fallback when a specific location cannot be resolved.
 const N3FJP_DEFAULT_LAT = 42.4;
 const N3FJP_DEFAULT_LON = -71.7;
 
+const client = new net.Socket();
+client.setNoDelay(true); // Kills network buffering lag
+
+// 💡 FIX: Use the dynamic N3FJP_HOST variable instead of the hardcoded '127.0.0.1' string!
+client.connect(N3FJP_PORT, N3FJP_HOST, () => {
+  console.log(`✅ Bridge Connected to N3FJP at ${N3FJP_HOST}:${N3FJP_PORT} (Low-Latency Mode)`);
+});
 const client = new net.Socket();
 client.setNoDelay(true); // Kills network buffering lag
 
@@ -185,6 +194,6 @@ async function processN3FJPRecord(raw) {
 
 client.on('error', (err) => console.error('❌ Socket Error:', err.message));
 client.on('close', () => {
-  console.log('📡 Connection to N3FJP closed. Retrying in 5s...');
-  setTimeout(() => client.connect(N3FJP_PORT, '127.0.0.1'), 5000);
+  console.log(`📡 Connection to N3FJP closed. Retrying to connect to ${N3FJP_HOST} in 5s...`);
+  setTimeout(() => client.connect(N3FJP_PORT, N3FJP_HOST), 5000);
 });
