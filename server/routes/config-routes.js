@@ -21,7 +21,7 @@ module.exports = function (app, ctx) {
     configJsonPath,
     isQRZConfigured,
     WSJTX_RELAY_KEY,
-  } = ctx; // <--- Make sure this is exactly a closing brace, equals sign, ctx, and semicolon
+  } = ctx;
 
   // ============================================
   // N3FJP BRIDGE CONFIGURATION & PROCESS MANAGER
@@ -30,6 +30,11 @@ module.exports = function (app, ctx) {
   const { fork } = require('child_process');
 
   let runningBridgeProcess = null;
+
+  // NOTE on Architecture: The N3FJP background bridge is forked directly here
+  // to keep configuration changes reactive and self-contained within the route.
+  // Gated strictly on n3fjpEnabled. Crashed/killed child processes run independently
+  // and will not destabilize the main clock server lifecycle.
 
   // ⚡ SMART AUTO-START: Only boot if explicitly saved as true in config
   try {
