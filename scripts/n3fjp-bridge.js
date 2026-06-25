@@ -8,8 +8,8 @@ const OHC_PORT = 3001;
 const N3FJP_DEFAULT_LAT = 42.4;
 const N3FJP_DEFAULT_LON = -71.7;
 
-let N3FJP_HOST = '127.0.0.1';
-let N3FJP_PORT = 1100;
+let N3FJP_HOST = process.env.N3FJP_TARGET_HOST || '127.0.0.1';
+let N3FJP_PORT = parseInt(process.env.N3FJP_TARGET_PORT, 10) || 1100;
 
 const client = new net.Socket();
 client.setNoDelay(true); // Kills network buffering lag
