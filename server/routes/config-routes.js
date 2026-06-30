@@ -1,5 +1,5 @@
 /**
- * Configuration routes â€” /api/config, /api/settings, /api/version, /api/weather.
+ * Configuration routes — /api/config, /api/settings, /api/version, /api/weather.
  * Lines ~10701-10887 of original server.js
  */
 
@@ -166,7 +166,7 @@ module.exports = function (app, ctx) {
   }
 
   const SETTINGS_FILE = getSettingsFilePath();
-  if (SETTINGS_SYNC_ENABLED && SETTINGS_FILE) logInfo(`[Settings] âœ“ Sync enabled, using: ${SETTINGS_FILE}`);
+  if (SETTINGS_SYNC_ENABLED && SETTINGS_FILE) logInfo(`[Settings] ✓ Sync enabled, using: ${SETTINGS_FILE}`);
   else if (SETTINGS_SYNC_ENABLED) logWarn('[Settings] Sync enabled but no writable path found');
   else logInfo('[Settings] Sync disabled (set SETTINGS_SYNC=true in .env to enable)');
 
@@ -195,7 +195,7 @@ module.exports = function (app, ctx) {
     }
   }
 
-  // GET /api/settings â€” return saved UI settings (or 404 if sync disabled)
+  // GET /api/settings — return saved UI settings (or 404 if sync disabled)
   app.get('/api/settings', (req, res) => {
     if (!SETTINGS_SYNC_ENABLED) {
       return res.status(404).json({ enabled: false });
@@ -204,7 +204,7 @@ module.exports = function (app, ctx) {
     res.json(settings || {});
   });
 
-  // POST /api/settings â€” save UI settings (or 404 if sync disabled)
+  // POST /api/settings — save UI settings (or 404 if sync disabled)
   app.post('/api/settings', writeLimiter, requireWriteAuth, (req, res) => {
     if (!SETTINGS_SYNC_ENABLED) {
       return res.status(404).json({ enabled: false });
@@ -214,7 +214,7 @@ module.exports = function (app, ctx) {
       return res.status(400).json({ error: 'Invalid settings object' });
     }
 
-    // Only allow openhamclock_*, ohc_*, and custom n3fjp keys
+    // Only allow openhamclock_*, ohc_*, and custom n3fjp keys (security: prevent arbitrary data injection)
     const filtered = {};
     for (const [key, value] of Object.entries(settings)) {
       if (
