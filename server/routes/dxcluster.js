@@ -84,6 +84,19 @@ module.exports = function (app, ctx) {
   ];
   const DXSPIDER_SSID = '-56'; // OpenHamClock SSID
 
+  // Phrases a node sends when it refuses our login. On a match we must stop
+  // immediately — never fire follow-up commands (sh/dx, set/dx), which the node
+  // reads as further bad logins.
+  const LOGIN_REJECTION_RE =
+    /(invalid|unknown|not a valid|incorrect|illegal|bad)\s+call|please enter.*call|login incorrect/i;
+
+  // DXSpider "bump": a second login with the same callsign kicks the first instance
+  // ("Reconnected as <call> ... this instance is disconnected"). Two OpenHamClock
+  // instances sharing one callsign cannibalize each other into a reconnect storm, so
+  // a bump is a hard back-off signal.
+  const BUMP_RE =
+    /reconnected as .*(?:this instance|on another|is disconnect)|already connected|connected from another/i;
+
   function getDxClusterLoginCallsign(preferredCallsign = null) {
     // Strip control characters to prevent telnet command injection via query params
     const candidate = (preferredCallsign || CONFIG.dxClusterCallsign || '').replace(/[\x00-\x1F\x7F]/g, '').trim();
@@ -191,7 +204,10 @@ module.exports = function (app, ctx) {
   // Persistent custom DX sessions (used by source=custom in /api/dxcluster/paths)
   const CUSTOM_DX_RETENTION_MS = 30 * 60 * 1000;
   const CUSTOM_DX_MAX_SPOTS = 500;
-  const CUSTOM_DX_RECONNECT_DELAY_MS = 10000;
+  const CUSTOM_DX_RECONNECT_DELAY_MS = 10000; // base; backs off exponentially on repeated failure
+  const CUSTOM_DX_RECONNECT_MIN_MS = 10000; // hard floor between dial attempts — a poll can never dial sooner
+  const CUSTOM_DX_MAX_RECONNECT_DELAY_MS = 5 * 60 * 1000; // cap — never hammer a node (mirror proxy)
+  const CUSTOM_DX_RAPID_DISCONNECT_MS = 15000; // kicked within 15s ⇒ likely auth reject / SSID bump
   const CUSTOM_DX_KEEPALIVE_MS = 30000;
   const CUSTOM_DX_STALE_MS = 5 * 60 * 1000; // Force reconnect after 5 min with no data
   const CUSTOM_DX_IDLE_TIMEOUT = 15 * 60 * 1000; // Reap sessions idle for 15 minutes
@@ -204,6 +220,10 @@ module.exports = function (app, ctx) {
       let reaped = 0;
       for (const [key, session] of customDxSessions) {
         if (now - session.lastUsedAt > CUSTOM_DX_IDLE_TIMEOUT) {
+          // Tombstone first so the socket's async 'close' → handleCustomSessionDisconnect
+          // can't spawn a detached reconnect loop after we delete the session (a
+          // single-process self-bump vector).
+          session.reaped = true;
           // Tear down timers
           if (session.reconnectTimer) {
             clearTimeout(session.reconnectTimer);
@@ -254,19 +274,49 @@ module.exports = function (app, ctx) {
   }
 
   function scheduleCustomSessionReconnect(session) {
-    if (session.reconnectTimer) return;
+    if (session.reaped || session.parked) return; // never resurrect a dead / given-up session
+    if (session.reconnectTimer) return; // single pending timer per session key
+    // Exponential backoff: base * 2^(attempts-1), capped, with a hard floor. Replaces
+    // the old fixed 10s loop that hammered nodes ~6×/min indefinitely.
+    const n = Math.max(0, (session.reconnectAttempts || 0) - 1);
+    const base = Math.min(CUSTOM_DX_RECONNECT_DELAY_MS * 2 ** n, CUSTOM_DX_MAX_RECONNECT_DELAY_MS);
+    const floored = Math.max(CUSTOM_DX_RECONNECT_MIN_MS, base);
+    // Jitter (+0..25%, capped 30s) breaks the synchronized reconnect herd across instances.
+    const jitter = Math.floor(Math.random() * Math.min(floored * 0.25, 30000));
+    const delay = floored + jitter;
+    logDebug(`[DX Cluster] Reconnect ${session.node.host} in ${delay}ms (attempt ${session.reconnectAttempts || 0})`);
     session.reconnectTimer = setTimeout(() => {
       session.reconnectTimer = null;
       connectCustomSession(session);
-    }, CUSTOM_DX_RECONNECT_DELAY_MS);
+    }, delay);
+  }
+
+  // Tear the socket down (remove listeners first so its async 'close' can't re-enter
+  // the disconnect path) and route through the counting/backoff scheduler.
+  function teardownAndReconnect(session, client) {
+    const sock = client || session.client;
+    try {
+      sock?.removeAllListeners();
+      sock?.destroy();
+    } catch (e) {}
+    if (session.client === sock) session.client = null;
+    handleCustomSessionDisconnect(session);
   }
 
   function handleCustomSessionDisconnect(session) {
-    if (session.connected === false && session.connecting === false) return;
+    if (session.reaped) return; // reaper tombstone — do not revive
+    if (customDxSessions.get(session.key) !== session) return; // orphaned (post-reap) — do not revive
+    // Already down with a reconnect pending — nothing to do (prevents double-counting
+    // when both 'error' and 'close' fire for the same drop).
+    if (session.connected === false && session.connecting === false && session.reconnectTimer) return;
+
+    const connMs = session.lastConnectedAt ? Date.now() - session.lastConnectedAt : 0;
+
     session.connected = false;
     session.connecting = false;
     session.loginSent = false;
     session.commandSent = false;
+    session.authenticated = false;
 
     if (session.keepAliveTimer) {
       clearInterval(session.keepAliveTimer);
@@ -275,16 +325,61 @@ module.exports = function (app, ctx) {
     try {
       session.client?.destroy();
     } catch (e) {}
+
+    // Rapid disconnect (kicked within ~15s of connecting) is almost always an auth
+    // rejection or same-SSID bump — escalate the backoff harder than a normal drop.
+    if (session.lastConnectedAt && connMs > 0 && connMs < CUSTOM_DX_RAPID_DISCONNECT_MS) {
+      logWarn(
+        `[DX Cluster] Rapid disconnect from ${session.node.host} after ${Math.round(connMs / 1000)}s (auth reject / SSID conflict)`,
+      );
+      session.reconnectAttempts = Math.min((session.reconnectAttempts || 0) + 2, 20);
+    } else {
+      session.reconnectAttempts = Math.min((session.reconnectAttempts || 0) + 1, 20);
+    }
+
     scheduleCustomSessionReconnect(session);
   }
 
   function connectCustomSession(session) {
+    if (session.reaped || session.parked) return;
     if (session.connected || session.connecting) return;
+
+    // HARD FLOOR: never dial sooner than CUSTOM_DX_RECONNECT_MIN_MS since the last
+    // attempt — even when a poll tries to force us. Reschedule for the remainder so a
+    // busy polling client can't turn reconnect into a fast loop.
+    const sinceLast = Date.now() - (session.lastConnectAttemptAt || 0);
+    if (session.lastConnectAttemptAt && sinceLast < CUSTOM_DX_RECONNECT_MIN_MS) {
+      if (!session.reconnectTimer) {
+        session.reconnectTimer = setTimeout(() => {
+          session.reconnectTimer = null;
+          connectCustomSession(session);
+        }, CUSTOM_DX_RECONNECT_MIN_MS - sinceLast);
+      }
+      return;
+    }
+
     if (session.reconnectTimer) {
       clearTimeout(session.reconnectTimer);
       session.reconnectTimer = null;
     }
+
+    // Single in-flight: kill any lingering socket before opening a new one so one
+    // session key never holds two concurrent connections (mirror the proxy).
+    if (session.client) {
+      try {
+        session.client.removeAllListeners();
+        session.client.destroy();
+      } catch (e) {}
+      session.client = null;
+    }
+
     session.connecting = true;
+    session.lastConnectAttemptAt = Date.now();
+    session.authenticated = false;
+    session.loginRejected = false;
+    // NOTE: reconnectAttempts is NOT reset here — only when spots actually flow with
+    // >60s uptime. Resetting on connect would defeat backoff against a node that
+    // accepts TCP then kicks us right after auth.
 
     const client = new net.Socket();
     session.client = client;
@@ -309,7 +404,7 @@ module.exports = function (app, ctx) {
 
       // Fallback: send login even if prompt text differs.
       setTimeout(() => {
-        if (session.client && session.connected && !session.loginSent) {
+        if (session.client && session.connected && !session.loginSent && !session.loginRejected) {
           session.loginSent = true;
           session.client.write(`${session.loginCallsign}\r\n`);
         }
@@ -317,6 +412,16 @@ module.exports = function (app, ctx) {
 
       session.keepAliveTimer = setInterval(() => {
         if (session.client && session.connected) {
+          // A connection that has stayed up and authenticated is healthy — clear the
+          // failover counter so a later transient drop restarts backoff from the base.
+          if (
+            session.reconnectAttempts > 0 &&
+            session.authenticated &&
+            session.lastConnectedAt &&
+            Date.now() - session.lastConnectedAt > 60000
+          ) {
+            session.reconnectAttempts = 0;
+          }
           // Force reconnect if no data received for CUSTOM_DX_STALE_MS
           const silentMs = Date.now() - (session.lastDataAt || 0);
           if (silentMs > CUSTOM_DX_STALE_MS) {
@@ -337,9 +442,11 @@ module.exports = function (app, ctx) {
       session.lastDataAt = Date.now();
       session.buffer += data.toString();
 
-      // Login prompt detection
+      // Login prompt → present our callsign. This is legitimate; only the sh/dx and
+      // set/dx follow-ups are the abuse vector, so those are gated separately below.
       if (
         !session.loginSent &&
+        !session.loginRejected &&
         (session.buffer.includes('login:') ||
           session.buffer.includes('Please enter your call') ||
           session.buffer.includes('enter your callsign'))
@@ -348,20 +455,43 @@ module.exports = function (app, ctx) {
         client.write(`${session.loginCallsign}\r\n`);
       }
 
-      // Once logged in, enable stream per connection. Snapshot is only requested
-      // once for the whole session lifecycle (first successful login).
+      // BUMP: our callsign was taken over by another login (cannibalization). Can
+      // happen even after auth. Transient contention → back off to the cap but keep
+      // trying. Checked on the raw buffer since the notice may arrive without a \n.
+      if (BUMP_RE.test(session.buffer)) {
+        logWarn(`[DX Cluster] Bumped on ${session.node.host} (same-callsign SSID conflict) — backing off`);
+        session.reconnectAttempts = Math.max(session.reconnectAttempts || 0, 12); // → 5-min cap
+        teardownAndReconnect(session, client);
+        return;
+      }
+
+      // LOGIN REJECTION (pre-auth): node refused this callsign outright. Retrying
+      // won't help and re-presenting it is exactly the abuse sysops flag — PARK the
+      // session so it stops dialing. The idle-reaper removes it once polling stops.
+      if (!session.authenticated && LOGIN_REJECTION_RE.test(session.buffer)) {
+        logWarn(`[DX Cluster] Login refused by ${session.node.host} — parking session (no reconnect)`);
+        session.loginRejected = true;
+        session.parked = true;
+        teardownAndReconnect(session, client);
+        return;
+      }
+
+      // Enable the spot feed once the node is responding post-login — never if the
+      // login was refused. Snapshot (sh/dx) once per session; set/dx per connection.
       if (
         session.loginSent &&
         !session.commandSent &&
+        !session.loginRejected &&
         (session.buffer.includes('Hello') ||
-          session.buffer.includes('de ') ||
+          session.buffer.includes(' de ') ||
           session.buffer.includes('dxspider >') ||
-          session.buffer.includes('>') ||
+          /\sde\s+\S+\s*>/.test(session.buffer) ||
           session.buffer.includes(session.loginCallsign.split('-')[0]))
       ) {
         session.commandSent = true;
+        session.authenticated = true; // node is responding to our login
         setTimeout(() => {
-          if (session.client && session.connected) {
+          if (session.client && session.connected && !session.loginRejected) {
             if (!session.initialSnapshotDone) {
               logInfo(
                 `[DX Cluster] Sending command: sh/dx 25 to ${session.node.host}:${session.node.port} as ${session.loginCallsign}`,
@@ -371,7 +501,7 @@ module.exports = function (app, ctx) {
             }
             // Enable ongoing stream where supported.
             setTimeout(() => {
-              if (session.client && session.connected) {
+              if (session.client && session.connected && !session.loginRejected) {
                 session.client.write('set/dx\r\n');
               }
             }, 700);
@@ -383,7 +513,13 @@ module.exports = function (app, ctx) {
       session.buffer = lines.pop() || '';
       for (const line of lines) {
         const parsed = parseDXSpiderSpotLine(line);
-        if (parsed) addCustomSessionSpot(session, parsed);
+        if (parsed) {
+          addCustomSessionSpot(session, parsed);
+          // A flowing spot proves login succeeded; reset backoff once stable >60s.
+          if (!session.authenticated) session.authenticated = true;
+          const uptime = session.lastConnectedAt ? Date.now() - session.lastConnectedAt : 0;
+          if (session.reconnectAttempts > 0 && uptime > 60000) session.reconnectAttempts = 0;
+        }
       }
     });
 
@@ -433,6 +569,13 @@ module.exports = function (app, ctx) {
         lastDataAt: 0,
         lastUsedAt: Date.now(),
         cleanupTimer: null,
+        // Good-neighbour hardening (mirrors dxspider-proxy/server.js):
+        authenticated: false, // positive auth proven this connection
+        loginRejected: false, // node refused our login on the current socket
+        reconnectAttempts: 0, // consecutive failures; resets only when healthy
+        lastConnectAttemptAt: 0, // enforces the hard reconnect floor
+        parked: false, // gave up (login permanently refused); no more dials
+        reaped: false, // idle-reaper tombstone; suppresses zombie reconnect
       };
       session.cleanupTimer = setInterval(() => {
         const now = Date.now();
@@ -444,7 +587,18 @@ module.exports = function (app, ctx) {
       connectCustomSession(session);
     } else {
       session.lastUsedAt = Date.now();
-      if (!session.connected && !session.connecting) {
+      // Nudge a reconnect only when genuinely idle AND no backoff is pending/parked.
+      // NEVER clear a pending reconnect timer from a poll — that force-connect on every
+      // poll is what truncated backoff to the poll interval and revived rejected
+      // sessions, defeating the hardening below.
+      if (
+        !session.connected &&
+        !session.connecting &&
+        !session.parked &&
+        !session.reaped &&
+        !session.reconnectTimer &&
+        Date.now() - (session.lastConnectAttemptAt || 0) >= CUSTOM_DX_RECONNECT_MIN_MS
+      ) {
         connectCustomSession(session);
       }
     }
@@ -493,6 +647,14 @@ module.exports = function (app, ctx) {
         ) {
           loginSent = true;
           client.write(`${loginCallsign}\r\n`);
+          return;
+        }
+
+        // If the node refused the login, stop — do NOT fire sh/dx (the node reads
+        // follow-up commands as further bad logins). Return whatever we already have.
+        if (!commandSent && LOGIN_REJECTION_RE.test(buffer)) {
+          logWarn(`[DX Cluster] Login refused by ${node.host} — aborting (no sh/dx)`);
+          finalize(spots.length > 0 ? spots : null);
           return;
         }
 
