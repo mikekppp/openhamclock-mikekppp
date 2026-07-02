@@ -1036,7 +1036,15 @@ module.exports = function (app, ctx) {
       try {
         const { httpStatusCode, ommArray } = await fetchOmmFromAmsat_TleBased();
         if (httpStatusCode === 200 && ommArray.length > 0) {
-          appendDataToOmmCache(ommArray);
+          // AMSAT is a fallback: only take entries for satellites that are
+          // still stale so its TLE-derived data cannot clobber fresher
+          // CelesTrak/Space-Track OMM data fetched moments earlier.
+          const staleNorads = new Set(
+            Object.values(HAM_SATELLITES)
+              .filter((s) => isStale(s.ommTimestamp))
+              .map((s) => s.norad),
+          );
+          appendDataToOmmCache(ommArray.filter((omm) => staleNorads.has(omm.NORAD_CAT_ID)));
         } else if (httpStatusCode === 0 || httpStatusCode >= 500) {
           logWarn(`[Satellites] Detected AMSAT HTTP state code = ${httpStatusCode}, blocking fetches for 60mins`);
           blockAmsatUntil = Date.now() + 60 * 60 * 1000; // 1 hour
@@ -1174,18 +1182,25 @@ module.exports = function (app, ctx) {
       const noradId = omm.NORAD_CAT_ID;
       const objectName = omm.OBJECT_NAME;
       const match = knownNoradIds.has(noradId);
-      const key = objectName.replace(/[^A-Z0-9\-]/g, '_').toUpperCase();
       if (match) {
         countUsed++;
         const hamSat = Object.values(HAM_SATELLITES).find((s) => s.norad === noradId);
         hamSat.ommTimestamp = now; // record timestamp
 
-        if (hamSat) {
-          ommCache[key] = { ...hamSat, omm: omm, timestamp: now };
-        }
+        // Key by the canonical registry name, never the upstream OBJECT_NAME —
+        // sources name the same bird differently (CelesTrak "ISS (ZARYA)" vs
+        // AMSAT "ISS"), and keying by upstream name cached the same satellite
+        // under two keys, duplicating it in the client list (#1101).
+        const key = String(hamSat.name || objectName)
+          .toUpperCase()
+          .replace(/[^A-Z0-9\-]/g, '_');
+        ommCache[key] = { ...hamSat, omm: omm, timestamp: now };
       } else {
         // keep a separate record of satellites with unused data
         countUnused++;
+        const key = String(objectName)
+          .toUpperCase()
+          .replace(/[^A-Z0-9\-]/g, '_');
         ommUnusedCache[key] = { norad: noradId, name: objectName };
       }
     });
