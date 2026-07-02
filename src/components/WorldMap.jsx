@@ -3006,66 +3006,64 @@ export const WorldMap = ({
             flexWrap: 'nowrap',
           }}
         >
-          {showDXPaths && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span style={{ color: '#888' }}>Bands:</span>
-              <button
-                type="button"
-                onClick={() => clearMapBandFilter()}
-                title="Show all bands"
-                style={{
-                  background: hasMapBandFilter ? 'rgba(120,120,120,0.35)' : '#00ffcc',
-                  color: hasMapBandFilter ? '#ccc' : '#001f1a',
-                  padding: '2px 5px',
-                  borderRadius: '3px',
-                  fontWeight: '700',
-                  border: hasMapBandFilter ? '1px solid #666' : '1px solid rgba(0,0,0,0.35)',
-                  cursor: 'pointer',
-                  lineHeight: 1.1,
-                }}
-              >
-                ALL
-              </button>
-              {BAND_LEGEND_ORDER.map((band) => {
-                const bg = getBandColorForBand(band, effectiveBandColors);
-                const fg = getBandTextColor(bg);
-                const isEditing = editingBand === band;
-                const isSelected = selectedMapBands.has(normalizeBandKey(band));
-                const isDimmed = hasMapBandFilter && !isSelected;
-                return (
-                  <button
-                    key={band}
-                    type="button"
-                    onClick={(e) => {
-                      if (e.shiftKey) {
-                        openBandColorEditor(band);
-                        return;
-                      }
-                      toggleMapBand(band);
-                    }}
-                    title={`Click to filter ${band}; Shift+Click to edit color`}
-                    style={{
-                      background: bg,
-                      color: fg,
-                      padding: '2px 5px',
-                      borderRadius: '3px',
-                      fontWeight: '600',
-                      border: isEditing
-                        ? '2px solid #ffffff'
-                        : isSelected
-                          ? '1px solid #00ffcc'
-                          : '1px solid rgba(0,0,0,0.35)',
-                      cursor: 'pointer',
-                      lineHeight: 1.1,
-                      opacity: isDimmed ? 0.35 : 1,
-                    }}
-                  >
-                    {band}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ color: '#888' }}>Bands:</span>
+            <button
+              type="button"
+              onClick={() => clearMapBandFilter()}
+              title="Show all bands"
+              style={{
+                background: hasMapBandFilter ? 'rgba(120,120,120,0.35)' : '#00ffcc',
+                color: hasMapBandFilter ? '#ccc' : '#001f1a',
+                padding: '2px 5px',
+                borderRadius: '3px',
+                fontWeight: '700',
+                border: hasMapBandFilter ? '1px solid #666' : '1px solid rgba(0,0,0,0.35)',
+                cursor: 'pointer',
+                lineHeight: 1.1,
+              }}
+            >
+              ALL
+            </button>
+            {BAND_LEGEND_ORDER.map((band) => {
+              const bg = getBandColorForBand(band, effectiveBandColors);
+              const fg = getBandTextColor(bg);
+              const isEditing = editingBand === band;
+              const isSelected = selectedMapBands.has(normalizeBandKey(band));
+              const isDimmed = hasMapBandFilter && !isSelected;
+              return (
+                <button
+                  key={band}
+                  type="button"
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      openBandColorEditor(band);
+                      return;
+                    }
+                    toggleMapBand(band);
+                  }}
+                  title={`Click to filter ${band}; Shift+Click to edit color`}
+                  style={{
+                    background: bg,
+                    color: fg,
+                    padding: '2px 5px',
+                    borderRadius: '3px',
+                    fontWeight: '600',
+                    border: isEditing
+                      ? '2px solid #ffffff'
+                      : isSelected
+                        ? '1px solid #00ffcc'
+                        : '1px solid rgba(0,0,0,0.35)',
+                    cursor: 'pointer',
+                    lineHeight: 1.1,
+                    opacity: isDimmed ? 0.35 : 1,
+                  }}
+                >
+                  {band}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       {!hideOverlays && !mapUiHidden && showLegend && editingBand && (
