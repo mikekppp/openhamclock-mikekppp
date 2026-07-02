@@ -9,10 +9,12 @@
  * SOTA / WWFF / WWBOTA). v2 adds lightning, aurora, aircraft, and Winlink
  * gateways: those live inside their Leaflet plugin hooks, which broadcast
  * `mapdata:<layer>` CustomEvents collected by useMapTextData and passed in
- * here as props (null = layer disabled).
+ * here as props (null = layer disabled). v3 routes all visible text and
+ * aria-labels through i18n (mapDataListView.* keys in src/lang/*.json).
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { calculateBearing, calculateDistance, formatDistance } from '../utils/geo.js';
 
 const COMPASS_8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -82,28 +84,34 @@ function relativeMinutes(ts) {
   return Math.floor(diffMs / 60000);
 }
 
-function ageAriaLabel(minutes) {
+function ageAriaLabel(minutes, t) {
   if (minutes == null) return '';
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  if (minutes < 1) return t('mapDataListView.age.justNow');
+  if (minutes < 60) {
+    return minutes === 1
+      ? t('mapDataListView.age.minuteAgo', { count: minutes })
+      : t('mapDataListView.age.minutesAgo', { count: minutes });
+  }
   const hours = Math.floor(minutes / 60);
-  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  return hours === 1
+    ? t('mapDataListView.age.hourAgo', { count: hours })
+    : t('mapDataListView.age.hoursAgo', { count: hours });
 }
 
-function ageDisplay(minutes) {
+function ageDisplay(minutes, t) {
   if (minutes == null) return '—';
-  if (minutes < 1) return 'now';
+  if (minutes < 1) return t('mapDataListView.age.now');
   if (minutes < 60) return `${minutes}m`;
   return `${Math.floor(minutes / 60)}h`;
 }
 
 // Seconds-resolution age for fast-moving data (lightning).
-function ageFine(ts) {
+function ageFine(ts, t) {
   if (!ts) return { display: '—', aria: '' };
   const seconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-  if (seconds < 60) return { display: `${seconds}s`, aria: `${seconds} seconds ago` };
+  if (seconds < 60) return { display: `${seconds}s`, aria: t('mapDataListView.age.secondsAgo', { count: seconds }) };
   const minutes = Math.floor(seconds / 60);
-  return { display: `${minutes}m`, aria: ageAriaLabel(minutes) };
+  return { display: `${minutes}m`, aria: ageAriaLabel(minutes, t) };
 }
 
 function freqDisplay(freq) {
@@ -148,8 +156,14 @@ export default function MapDataListView({
   deLocation,
   units = 'metric',
 }) {
+  const { t } = useTranslation();
   const deLat = deLocation?.lat;
   const deLon = deLocation?.lon;
+
+  const bearingAria = (bd) =>
+    bd
+      ? t('mapDataListView.aria.bearingDistance', { bearing: bd.bearing, compass: bd.compass, distance: bd.distance })
+      : undefined;
 
   const dxRows = (dxSpots || []).slice(0, 50).map((spot, i) => {
     const minutes = relativeMinutes(spot.timestamp);
@@ -159,14 +173,14 @@ export default function MapDataListView({
       <tr key={`dx-${spot.id || i}`}>
         <td style={tdStyle}>
           {freq}
-          <span className="visually-hidden"> megahertz</span>
+          <span className="visually-hidden"> {t('mapDataListView.aria.megahertz')}</span>
         </td>
         <td style={tdStyle}>{spot.call || '?'}</td>
-        <td style={tdStyle} aria-label={bd ? `bearing ${bd.bearing} degrees ${bd.compass}, ${bd.distance}` : undefined}>
+        <td style={tdStyle} aria-label={bearingAria(bd)}>
           {bd ? `${bd.bearing}° ${bd.compass} · ${bd.distance}` : '—'}
         </td>
-        <td style={tdStyle} aria-label={minutes != null ? ageAriaLabel(minutes) : undefined}>
-          {ageDisplay(minutes)}
+        <td style={tdStyle} aria-label={minutes != null ? ageAriaLabel(minutes, t) : undefined}>
+          {ageDisplay(minutes, t)}
         </td>
       </tr>
     );
@@ -178,25 +192,32 @@ export default function MapDataListView({
 
   const satRows = overhead.slice(0, 50).map((sat, i) => {
     const nextPassMin = (() => {
-      const t = sat.nextPassStartTimes?.[0];
-      if (!t) return null;
-      const diff = new Date(t).getTime() - Date.now();
+      const ts = sat.nextPassStartTimes?.[0];
+      if (!ts) return null;
+      const diff = new Date(ts).getTime() - Date.now();
       if (!Number.isFinite(diff) || diff < 0) return null;
       return Math.round(diff / 60000);
     })();
     return (
       <tr key={`sat-${sat.name || i}`}>
         <td style={tdStyle}>{sat.name}</td>
-        <td style={tdStyle} aria-label={`elevation ${sat.elevation} degrees`}>
+        <td style={tdStyle} aria-label={t('mapDataListView.aria.elevation', { value: sat.elevation })}>
           {sat.elevation}°
         </td>
-        <td style={tdStyle} aria-label={`azimuth ${sat.azimuth} degrees ${compass8(sat.azimuth)}`}>
+        <td
+          style={tdStyle}
+          aria-label={t('mapDataListView.aria.azimuth', { value: sat.azimuth, compass: compass8(sat.azimuth) })}
+        >
           {sat.azimuth}° {compass8(sat.azimuth)}
         </td>
         <td style={tdStyle}>{sat.mode || '—'}</td>
         <td
           style={tdStyle}
-          aria-label={nextPassMin != null ? `next pass in ${nextPassMin} minutes` : 'no pass scheduled'}
+          aria-label={
+            nextPassMin != null
+              ? t('mapDataListView.aria.nextPassIn', { minutes: nextPassMin })
+              : t('mapDataListView.aria.noPass')
+          }
         >
           {nextPassMin != null ? `${nextPassMin}m` : '—'}
         </td>
@@ -214,13 +235,13 @@ export default function MapDataListView({
         <td style={tdStyle}>{spot.ref || '—'}</td>
         <td style={tdStyle}>
           {freqDisplay(spot.freq)}
-          <span className="visually-hidden"> megahertz</span>
+          <span className="visually-hidden"> {t('mapDataListView.aria.megahertz')}</span>
         </td>
-        <td style={tdStyle} aria-label={bd ? `bearing ${bd.bearing} degrees ${bd.compass}, ${bd.distance}` : undefined}>
+        <td style={tdStyle} aria-label={bearingAria(bd)}>
           {bd ? `${bd.bearing}° ${bd.compass} · ${bd.distance}` : '—'}
         </td>
-        <td style={tdStyle} aria-label={minutes != null ? ageAriaLabel(minutes) : undefined}>
-          {ageDisplay(minutes)}
+        <td style={tdStyle} aria-label={minutes != null ? ageAriaLabel(minutes, t) : undefined}>
+          {ageDisplay(minutes, t)}
         </td>
       </tr>
     );
@@ -237,16 +258,13 @@ export default function MapDataListView({
     .slice(0, 25)
     .map((strike, i) => {
       const bd = bearingDistanceLabel(deLat, deLon, strike.lat, strike.lon, units);
-      const age = ageFine(strike.timestamp);
+      const age = ageFine(strike.timestamp, t);
       return (
         <tr key={`strike-${strike.id || i}`}>
-          <td
-            style={tdStyle}
-            aria-label={bd ? `bearing ${bd.bearing} degrees ${bd.compass}, ${bd.distance}` : undefined}
-          >
+          <td style={tdStyle} aria-label={bearingAria(bd)}>
             {bd ? `${bd.bearing}° ${bd.compass} · ${bd.distance}` : '—'}
           </td>
-          <td style={tdStyle} aria-label={`${strike.intensity} kiloamperes`}>
+          <td style={tdStyle} aria-label={t('mapDataListView.aria.kiloamperes', { value: strike.intensity })}>
             {strike.intensity} kA
           </td>
           <td style={tdStyle}>{strike.polarity}</td>
@@ -266,16 +284,25 @@ export default function MapDataListView({
         <tr key={`plane-${plane.id || i}`}>
           <td style={tdStyle}>{plane.call || plane.registration || '?'}</td>
           <td style={tdStyle}>{plane.type || '—'}</td>
-          <td style={tdStyle} aria-label={alt != null ? `${alt} feet` : 'on ground'}>
-            {alt != null ? `${alt.toLocaleString()} ft` : 'ground'}
-          </td>
-          <td style={tdStyle} aria-label={plane.speed_kn != null ? `${Math.round(plane.speed_kn)} knots` : undefined}>
-            {plane.speed_kn != null ? `${Math.round(plane.speed_kn)} kn` : '—'}
+          <td
+            style={tdStyle}
+            aria-label={
+              alt != null ? t('mapDataListView.aria.feet', { value: alt }) : t('mapDataListView.aria.onGround')
+            }
+          >
+            {alt != null ? `${alt.toLocaleString()} ft` : t('mapDataListView.aircraft.ground')}
           </td>
           <td
             style={tdStyle}
-            aria-label={bd ? `bearing ${bd.bearing} degrees ${bd.compass}, ${bd.distance}` : undefined}
+            aria-label={
+              plane.speed_kn != null
+                ? t('mapDataListView.aria.knots', { value: Math.round(plane.speed_kn) })
+                : undefined
+            }
           >
+            {plane.speed_kn != null ? `${Math.round(plane.speed_kn)} kn` : '—'}
+          </td>
+          <td style={tdStyle} aria-label={bearingAria(bd)}>
             {bd ? `${bd.bearing}° ${bd.compass} · ${bd.distance}` : '—'}
           </td>
         </tr>
@@ -291,19 +318,16 @@ export default function MapDataListView({
         .slice(0, 3)
         .map((c) => `${(c.frequency / 1e6).toFixed(3)} ${c.modeLabel || ''}`.trim())
         .join(', ');
-      const more = channels.length > 3 ? ` +${channels.length - 3} more` : '';
+      const more = channels.length > 3 ? ` ${t('mapDataListView.winlink.more', { count: channels.length - 3 })}` : '';
       return (
         <tr key={`gw-${gw.callsign || i}`}>
           <td style={tdStyle}>{gw.callsign}</td>
           <td style={tdStyle}>{gw.gridsquare || '—'}</td>
-          <td style={tdStyle} aria-label={`${shown} megahertz${more}`}>
+          <td style={tdStyle} aria-label={`${shown} ${t('mapDataListView.aria.megahertz')}${more}`}>
             {shown}
             {more}
           </td>
-          <td
-            style={tdStyle}
-            aria-label={bd ? `bearing ${bd.bearing} degrees ${bd.compass}, ${bd.distance}` : undefined}
-          >
+          <td style={tdStyle} aria-label={bearingAria(bd)}>
             {bd ? `${bd.bearing}° ${bd.compass} · ${bd.distance}` : '—'}
           </td>
         </tr>
@@ -313,83 +337,119 @@ export default function MapDataListView({
   const auroraSummary = aurora?.summary;
   const auroraLines = auroraSummary
     ? [
-        `Peak probability: ${auroraSummary.maxProbability}%${
-          auroraSummary.maxLat != null ? ` (${auroraSummary.maxLat > 0 ? 'northern' : 'southern'} hemisphere)` : ''
-        }`,
+        auroraSummary.maxLat != null
+          ? t('mapDataListView.aurora.peakHemisphere', {
+              value: auroraSummary.maxProbability,
+              hemisphere:
+                auroraSummary.maxLat > 0 ? t('mapDataListView.aurora.northern') : t('mapDataListView.aurora.southern'),
+            })
+          : t('mapDataListView.aurora.peak', { value: auroraSummary.maxProbability }),
         auroraSummary.southernExtentNorth != null
-          ? `Northern oval extends south to ${Math.round(auroraSummary.southernExtentNorth)}°N`
-          : 'Northern oval: no significant activity',
+          ? t('mapDataListView.aurora.northOvalExtent', { deg: Math.round(auroraSummary.southernExtentNorth) })
+          : t('mapDataListView.aurora.northOvalQuiet'),
         auroraSummary.northernExtentSouth != null
-          ? `Southern oval extends north to ${Math.abs(Math.round(auroraSummary.northernExtentSouth))}°S`
-          : 'Southern oval: no significant activity',
+          ? t('mapDataListView.aurora.southOvalExtent', {
+              deg: Math.abs(Math.round(auroraSummary.northernExtentSouth)),
+            })
+          : t('mapDataListView.aurora.southOvalQuiet'),
         auroraSummary.probabilityAtDe != null
-          ? `Probability at your location: ${auroraSummary.probabilityAtDe}%`
+          ? t('mapDataListView.aurora.probabilityAtDe', { value: auroraSummary.probabilityAtDe })
           : null,
-        auroraSummary.forecastTime ? `Forecast time: ${new Date(auroraSummary.forecastTime).toUTCString()}` : null,
+        auroraSummary.forecastTime
+          ? t('mapDataListView.aurora.forecastTime', { time: new Date(auroraSummary.forecastTime).toUTCString() })
+          : null,
       ].filter(Boolean)
     : [];
 
-  const layerOffMsg = (name) => `${name} layer is off — enable it from the map layers menu to populate this section.`;
+  const layerOffMsg = (name) => t('mapDataListView.layerOff', { name });
 
   return (
     <div className="panel" style={{ padding: '12px 14px', height: '100%', overflowY: 'auto' }}>
       <div role="note" style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
-        Screen-reader-friendly text view of the data plotted on the map. Each section corresponds to a map layer.
-        Sections only populate when the relevant data is loaded.
+        {t('mapDataListView.intro')}
       </div>
 
       <Section
-        title="DX Spots"
+        title={t('mapDataListView.section.dxSpots')}
         count={dxRows.length}
-        columns={['Frequency', 'Callsign', 'Bearing / Distance', 'Age']}
-        emptyMsg="No DX spots loaded."
+        columns={[
+          t('mapDataListView.col.frequency'),
+          t('mapDataListView.col.callsign'),
+          t('mapDataListView.col.bearingDistance'),
+          t('mapDataListView.col.age'),
+        ]}
+        emptyMsg={t('mapDataListView.empty.dxSpots')}
         isEmpty={dxRows.length === 0}
       >
         {dxRows}
       </Section>
 
       <Section
-        title="Satellites Overhead"
+        title={t('mapDataListView.section.satellites')}
         count={satRows.length}
-        columns={['Name', 'Elevation', 'Azimuth', 'Mode', 'Next Pass']}
-        emptyMsg="No satellites currently above the horizon."
+        columns={[
+          t('mapDataListView.col.name'),
+          t('mapDataListView.col.elevation'),
+          t('mapDataListView.col.azimuth'),
+          t('mapDataListView.col.mode'),
+          t('mapDataListView.col.nextPass'),
+        ]}
+        emptyMsg={t('mapDataListView.empty.satellites')}
         isEmpty={satRows.length === 0}
       >
         {satRows}
       </Section>
 
       <Section
-        title="Activations (POTA / SOTA / WWFF / WWBOTA)"
+        title={t('mapDataListView.section.activations')}
         count={activationRows.length}
-        columns={['Program', 'Callsign', 'Reference', 'Frequency', 'Bearing / Distance', 'Age']}
-        emptyMsg="No activation spots loaded."
+        columns={[
+          t('mapDataListView.col.program'),
+          t('mapDataListView.col.callsign'),
+          t('mapDataListView.col.reference'),
+          t('mapDataListView.col.frequency'),
+          t('mapDataListView.col.bearingDistance'),
+          t('mapDataListView.col.age'),
+        ]}
+        emptyMsg={t('mapDataListView.empty.activations')}
         isEmpty={activationRows.length === 0}
       >
         {activationRows}
       </Section>
 
       <Section
-        title="Lightning Strikes"
+        title={t('mapDataListView.section.lightning')}
         count={lightning ? lightningRows.length : null}
-        columns={['Bearing / Distance', 'Intensity', 'Polarity', 'Age']}
-        emptyMsg={lightning ? 'No strikes received yet.' : layerOffMsg('Lightning')}
+        columns={[
+          t('mapDataListView.col.bearingDistance'),
+          t('mapDataListView.col.intensity'),
+          t('mapDataListView.col.polarity'),
+          t('mapDataListView.col.age'),
+        ]}
+        emptyMsg={lightning ? t('mapDataListView.empty.lightning') : layerOffMsg(t('mapDataListView.layer.lightning'))}
         isEmpty={lightningRows.length === 0}
       >
         {lightningRows}
       </Section>
 
       <Section
-        title="Aircraft"
+        title={t('mapDataListView.section.aircraft')}
         count={aircraft ? aircraftRows.length : null}
-        columns={['Callsign', 'Type', 'Altitude', 'Speed', 'Bearing / Distance']}
-        emptyMsg={aircraft ? 'No aircraft loaded yet.' : layerOffMsg('Aircraft')}
+        columns={[
+          t('mapDataListView.col.callsign'),
+          t('mapDataListView.col.type'),
+          t('mapDataListView.col.altitude'),
+          t('mapDataListView.col.speed'),
+          t('mapDataListView.col.bearingDistance'),
+        ]}
+        emptyMsg={aircraft ? t('mapDataListView.empty.aircraft') : layerOffMsg(t('mapDataListView.layer.aircraft'))}
         isEmpty={aircraftRows.length === 0}
       >
         {aircraftRows}
       </Section>
 
       <section style={sectionStyle}>
-        <h2 style={sectionTitleStyle}>Aurora Forecast</h2>
+        <h2 style={sectionTitleStyle}>{t('mapDataListView.section.aurora')}</h2>
         {auroraLines.length > 0 ? (
           <ul
             style={{
@@ -405,23 +465,29 @@ export default function MapDataListView({
             ))}
           </ul>
         ) : (
-          <div style={emptyStyle}>{aurora ? 'Aurora forecast loading…' : layerOffMsg('Aurora')}</div>
+          <div style={emptyStyle}>
+            {aurora ? t('mapDataListView.empty.auroraLoading') : layerOffMsg(t('mapDataListView.layer.aurora'))}
+          </div>
         )}
       </section>
 
       <Section
-        title="Winlink Gateways (nearest first)"
+        title={t('mapDataListView.section.winlink')}
         count={winlink ? winlinkRows.length : null}
-        columns={['Callsign', 'Grid', 'Frequencies / Modes', 'Bearing / Distance']}
-        emptyMsg={winlink ? 'No gateways loaded yet.' : layerOffMsg('Winlink Gateways')}
+        columns={[
+          t('mapDataListView.col.callsign'),
+          t('mapDataListView.col.grid'),
+          t('mapDataListView.col.freqModes'),
+          t('mapDataListView.col.bearingDistance'),
+        ]}
+        emptyMsg={winlink ? t('mapDataListView.empty.winlink') : layerOffMsg(t('mapDataListView.layer.winlink'))}
         isEmpty={winlinkRows.length === 0}
       >
         {winlinkRows}
       </Section>
 
       <div role="note" style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '16px', lineHeight: 1.5 }}>
-        Lightning, aircraft, aurora, and Winlink sections follow their map layer toggles — turn the layer on and the
-        section populates. Feedback on what is useful versus noise is welcome on issue #1002.
+        {t('mapDataListView.outro')}
       </div>
     </div>
   );
