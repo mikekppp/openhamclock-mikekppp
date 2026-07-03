@@ -820,8 +820,12 @@ module.exports = function (app, ctx) {
 
   const isSpaceTrackEnabled = CONFIG.satellites.spaceTrack?.enabled || false; // default false if undefined
   const isCelestrakEnabled = CONFIG.satellites.celestrak?.enabled ?? true; // default true if undefined
+  const isAmsatTleEnabled = CONFIG.satellites.amsat_tle?.enabled ?? true; // default true if undefined
+  const isSatnogsTleEnabled = CONFIG.satellites.satnogs_tle?.enabled ?? true; // default true if undefined
   logDebug('[Satellites] Space-Track enabled: ' + isSpaceTrackEnabled);
   logDebug('[Satellites] CelesTrak enabled: ' + isCelestrakEnabled);
+  logDebug('[Satellites] AMSAT TLE enabled: ' + isAmsatTleEnabled);
+  logDebug('[Satellites] SatNOGS TLE enabled: ' + isSatnogsTleEnabled);
 
   let blockCelesTrakUntil = Date.now() - 1; // Timestamp until which CelesTrak fetches are blocked due to rate limiting or ban
   let blockSpaceTrackUntil = Date.now() - 1; // Timestamp until which Space-Track fetches are blocked due to rate limiting or ban
@@ -968,7 +972,7 @@ module.exports = function (app, ctx) {
     CELESTRAK_INDIVIDUAL_INIT: async () => {
       if (blockCelesTrakUntil && Date.now() < blockCelesTrakUntil) {
         logDebug('[Satellites] Skipping CelesTrak fetch due to active backoff');
-        return 'AMSAT_INIT'; // fall through to fallback chain
+        return isAmsatTleEnabled ? 'AMSAT_INIT' : isSatnogsTleEnabled ? 'SATNOGS_INDIVIDUAL_INIT' : 'START'; // return next state
       }
 
       // loop until every eligible satellite has been attempted for download using CELESTRAK_INDIVIDUAL_FETCH state,
@@ -990,7 +994,7 @@ module.exports = function (app, ctx) {
         return 'CELESTRAK_INDIVIDUAL_FETCH'; // return next state
       }
 
-      return 'AMSAT_INIT'; // CelesTrak chain done — fall through to AMSAT/SatNOGS fallback
+      return isAmsatTleEnabled ? 'AMSAT_INIT' : isSatnogsTleEnabled ? 'SATNOGS_INDIVIDUAL_INIT' : 'START'; // CelesTrak chain done — fall through to AMSAT/SatNOGS fallback
     },
 
     CELESTRAK_INDIVIDUAL_FETCH: async () => {
@@ -1024,8 +1028,9 @@ module.exports = function (app, ctx) {
     // AMSAT fallback (covers amateur sats when CelesTrak is unreachable)
     AMSAT_INIT: async () => {
       if (blockAmsatUntil && Date.now() < blockAmsatUntil) {
-        return 'SATNOGS_INDIVIDUAL_INIT';
+        return isSatnogsTleEnabled ? 'SATNOGS_INDIVIDUAL_INIT' : 'START'; // return next state
       }
+
       // Only run if there are still stale satellites needing data
       const stillStale = Object.values(HAM_SATELLITES).filter((s) => isStale(s.ommTimestamp));
       if (stillStale.length === 0) return 'START';
@@ -1053,7 +1058,7 @@ module.exports = function (app, ctx) {
         const msg = ex?.message || String(ex ?? '(unknown error)');
         logWarn(`[Satellites] caught unknown exception in AMSAT_FETCH handler: ${msg}`);
       } finally {
-        return 'SATNOGS_INDIVIDUAL_INIT';
+        return isSatnogsTleEnabled ? 'SATNOGS_INDIVIDUAL_INIT' : 'START'; // return next state
       }
     },
 
