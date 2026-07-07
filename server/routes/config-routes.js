@@ -60,7 +60,8 @@ module.exports = function (app, ctx) {
     logWarn(`Failed to parse startup config: ${e.message}`);
   }
 
-  app.post('/api/n3fjp/configure', async (req, res) => {
+  // ⚡ Updated to include security middleware
+  app.post('/api/n3fjp/configure', writeLimiter, requireWriteAuth, async (req, res) => {
     const { host, port, enabled } = req.body || {};
 
     if (!host || !port) {
