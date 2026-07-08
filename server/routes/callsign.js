@@ -628,8 +628,20 @@ module.exports = function (app, ctx) {
     };
   }
 
-  function getUserCallbookSession(provider, username, password) {
-    const hash = crypto.createHash('sha256').update(`${provider}\0${username}\0${password}`).digest('hex').slice(0, 32);
+  // Derive the session/cache key with scrypt (async — runs on the libuv
+  // thread pool, not the event loop). The key partitions the in-memory
+  // session map and lookup cache per credential set; using a real password
+  // KDF means the key never weakens the password it was derived from.
+  function deriveCallbookKey(provider, username, password) {
+    return new Promise((resolve, reject) => {
+      crypto.scrypt(password, `ohc-callbook:${provider}:${username.toLowerCase()}`, 24, (err, buf) =>
+        err ? reject(err) : resolve(buf.toString('hex')),
+      );
+    });
+  }
+
+  async function getUserCallbookSession(provider, username, password) {
+    const hash = await deriveCallbookKey(provider, username, password);
     let session = userCallbookSessions.get(hash);
     if (!session) {
       if (userCallbookSessions.size >= USER_CALLBOOK_SESSION_MAX) {
@@ -679,11 +691,15 @@ module.exports = function (app, ctx) {
     if (!user || !password || user.length > 64 || password.length > 128) {
       return res.status(400).json({ error: 'Invalid credentials format' });
     }
-    const { session } = getUserCallbookSession(provider, user, password);
-    session.authFailedUntil = 0; // user just (re)entered these — try now
-    const token = provider === 'qrz' ? await qrzLogin(session) : await hamqthLogin(session);
-    if (token) return res.json({ success: true });
-    res.json({ success: false, error: session.lastError || 'Login failed' });
+    try {
+      const { session } = await getUserCallbookSession(provider, user, password);
+      session.authFailedUntil = 0; // user just (re)entered these — try now
+      const token = provider === 'qrz' ? await qrzLogin(session) : await hamqthLogin(session);
+      if (token) return res.json({ success: true });
+      res.json({ success: false, error: session.lastError || 'Login failed' });
+    } catch {
+      res.status(500).json({ error: 'Verification failed' });
+    }
   });
 
   // Look up via HamQTH DXCC JSON API (no auth, but only DXCC-level accuracy)
@@ -946,15 +962,26 @@ module.exports = function (app, ctx) {
     let cacheSuffix = '';
     let userQrzSession = null;
     let userHamqthSession = null;
-    if (userQrzCreds) {
-      const { session, hash } = getUserCallbookSession('qrz', userQrzCreds.username, userQrzCreds.password);
-      userQrzSession = session;
-      cacheSuffix += `:q${hash}`;
-    }
-    if (userHamqthCreds) {
-      const { session, hash } = getUserCallbookSession('hamqth', userHamqthCreds.username, userHamqthCreds.password);
-      userHamqthSession = session;
-      cacheSuffix += `:h${hash}`;
+    try {
+      if (userQrzCreds) {
+        const { session, hash } = await getUserCallbookSession('qrz', userQrzCreds.username, userQrzCreds.password);
+        userQrzSession = session;
+        cacheSuffix += `:q${hash}`;
+      }
+      if (userHamqthCreds) {
+        const { session, hash } = await getUserCallbookSession(
+          'hamqth',
+          userHamqthCreds.username,
+          userHamqthCreds.password,
+        );
+        userHamqthSession = session;
+        cacheSuffix += `:h${hash}`;
+      }
+    } catch {
+      // Key derivation failed — proceed as an unauthenticated lookup
+      userQrzSession = null;
+      userHamqthSession = null;
+      cacheSuffix = '';
     }
 
     // Check cache first (check both raw and base forms)
