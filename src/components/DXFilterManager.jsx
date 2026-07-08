@@ -959,7 +959,7 @@ export const DXFilterManager = ({ filters, onFilterChange, isOpen, onClose, onCl
             <input
               type="range"
               min="5"
-              max="30"
+              max="60"
               step="5"
               value={retentionMinutes}
               onChange={(e) => onFilterChange({ ...filters, spotRetentionMinutes: parseInt(e.target.value) })}
@@ -991,7 +991,7 @@ export const DXFilterManager = ({ filters, onFilterChange, isOpen, onClose, onCl
             }}
           >
             <span>5 min (freshest)</span>
-            <span>30 min (default)</span>
+            <span>60 min (longest)</span>
           </div>
         </div>
 
@@ -1000,7 +1000,7 @@ export const DXFilterManager = ({ filters, onFilterChange, isOpen, onClose, onCl
             Quick Presets
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            {[5, 10, 15, 20, 30].map((mins) => (
+            {[5, 10, 15, 20, 30, 60].map((mins) => (
               <button
                 key={mins}
                 onClick={() => onFilterChange({ ...filters, spotRetentionMinutes: mins })}
