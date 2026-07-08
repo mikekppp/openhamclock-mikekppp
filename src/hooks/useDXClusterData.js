@@ -93,8 +93,14 @@ export const useDXClusterData = (filters = {}, config = {}) => {
               (item) => now - (item.timestamp || now) < effectiveRetentionMs,
             );
 
-            // Sort by timestamp (newest first) and limit
-            return validItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 200);
+            // Sort by timestamp (newest first) and limit. DXpedition-tagged
+            // spots are rare and exempt from the cap — under RBN skimmer
+            // volume 200 spots span minutes, which would evict them long
+            // before their retention expires.
+            const sorted = validItems.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            const dxpeditions = sorted.filter((item) => item.isDXpedition);
+            const regular = sorted.filter((item) => !item.isDXpedition).slice(0, 200);
+            return [...dxpeditions, ...regular].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
           });
 
           lastFetchRef.current = now;
