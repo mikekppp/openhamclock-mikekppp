@@ -438,10 +438,11 @@
             openhamclock.com · github.com/accius/openhamclock
           </p>
           <aside class="notes">
-            Welcome / thanks to SFDXA. Tonight, ~25 minutes: what OpenHamClock is, what it does for a DXer
-            specifically, and how you can run it. We'll spend the back half live in the app. Quick intro of self —
-            name, callsign, how you got into the project — then dive in. Zoom logistics: share the browser window (not
-            the whole screen), keep the deck and the live tab in the same window so switching is clean.
+            Thanks for having me tonight, everyone. I'm Chris Hetherington, K0CJH — [LICENSED SINCE YEAR], operating
+            from [LOCATION]. I'm the developer behind a project called OpenHamClock, and over the next twenty-five
+            minutes I want to show you what it is, what it does for a DXer specifically, and how you can run it on
+            whatever you've already got. The back half of this is a live demo, and the site is live right now at
+            openhamclock.com — feel free to open it on your end and click along as we go.
           </aside>
         </section>
 
@@ -460,9 +461,12 @@
             Railway.
           </p>
           <aside class="notes">
-            Don't read the bullets — talk through them at a clip. The point of this slide is that OHC is *one* thing
-            that replaces opening eight tabs. Ask the room (Zoom chat works great for this): who here has DX Heat or a
-            cluster page open right now? VOACAP online? PSKReporter in a tab? That's the audience.
+            In one breath: OpenHamClock is everything a DXer wants, on one screen, in any browser. It's the DX cluster,
+            DXpeditions, and PSKReporter, filtered the way you actually chase. It's VOACAP propagation run live for your
+            QTH — not somebody's stale screenshot. It's click-a-spot and your radio tunes. And it's free and open
+            source. It runs cloud-hosted at openhamclock.com, or you can self-host on a Pi, a Mac, a Linux box, or in
+            Docker. If you've ever had eight tabs open in the shack — a cluster page here, VOACAP there, PSKReporter in
+            a third — that's the problem this solves. One screen.
           </aside>
         </section>
 
@@ -497,9 +501,12 @@
             </div>
           </div>
           <aside class="notes">
-            Set the tone here — this is *not* a competitor to HamClock. It's a love letter. Elwood passed in early 2026.
-            Many hams on the call will recognize HamClock running on the wall of their shack. Acknowledge that lineage
-            before showing anything new.
+            Before I show you anything new, I want to acknowledge where this comes from. If you've been licensed more
+            than a few years, you probably know the name Elwood Downey, WB0OEW. He built the original HamClock — the
+            little dashboard you've seen running on Raspberry Pis in shacks all over the world. Elwood became a Silent
+            Key in early 2026. OpenHamClock is not a fork of his code. It's a ground-up rewrite for the modern web — but
+            the goal is exactly his: give an operator one screen that tells them what's happening in the world. The
+            dedication in the license file is real. This project exists because his did. [Pause a beat, then advance.]
           </aside>
         </section>
 
@@ -510,11 +517,12 @@
           <img src="assets/1.png" alt="OpenHamClock full dashboard view" class="hero-shot" />
           <p class="caption">Map · DX cluster · solar imagery · VOACAP · weather · station panels — all one screen.</p>
           <aside class="notes">
-            Just let the image do the work. Talk through the regions on screen: - Top header: callsign, UTC + local
-            time, weather, solar indices. - Left: your DE/DX station panels and a solar imagery panel + VOACAP. -
-            Center: world map with day/night terminator and great-circle paths. - Right: DX cluster, PSKReporter,
-            DXpeditions, contests. - Bottom: band buttons. Mention flexlayout — panels dock/undock/tear off like a real
-            ops console, and you can save layouts (bench, contesting, DXpedition-chasing) and flip between them.
+            So here's what it looks like. The default layout is a world map with everything else docked around it. Your
+            callsign and the time are up top. Solar weather — SFI, K-index, sunspot number — runs across the header.
+            Down the left, your DE and DX station panels, solar imagery, and VOACAP. On the right, the DX cluster,
+            PSKReporter, DXpeditions, and contests. Band buttons across the bottom. And all of these panels dock,
+            undock, tear off, and resize. You can save one layout for casual monitoring, another for a contest weekend,
+            another for chasing a DXpedition — and flip between them with one click.
           </aside>
         </section>
 
@@ -528,11 +536,12 @@
             earthquakes…)
           </p>
           <aside class="notes">
-            The map is the killer feature for a DX crowd. It's NOT a static image — it's interactive. Click any DX
-            cluster spot and it draws the great-circle path right there, with distance, bearing, grid, and
-            sunrise/sunset at both ends. The day/night terminator is live — this room knows exactly why that matters:
-            gray-line. When the terminator is crossing an ATNO you need, you can see it. Demo this live later by
-            clicking a few cluster spots.
+            The map is the application. It's a real interactive map — pan, zoom, pick your projection. The day/night
+            terminator updates in real time — and I don't have to explain to this club why that matters. When the gray
+            line is crossing the entity you need, you can see it, live, right next to the spots. You set your DE — where
+            you are — and pick a DX, and you instantly have distance, bearing, grid squares, and sunrise and sunset at
+            both ends. And when you click a cluster spot, it draws the great-circle path right on the map. You'll see
+            all of this live in a few minutes.
           </aside>
         </section>
 
@@ -561,11 +570,16 @@
             </div>
           </div>
           <aside class="notes">
-            Takeaways for this room: (1) cluster filtering is finally sane — exclude list, watchlist, band/mode/zone —
-            and the new "Show only DXpeditions" toggle cross-references the DXpedition calendar so the list collapses
-            to just the ATNOs. (2) You can now SPOT from the panel — no separate telnet session. (3) MQTT for
-            PSKReporter is the big upgrade — actual real-time, not poll-every-5-minutes. The DXpeditions panel
-            underneath shows active expeditions ranked by activity.
+            The DX cluster has been around since the late eighties — and most cluster interfaces still look like it.
+            This is the version you wish you'd had all along. Filter by band, mode, CQ zone, or your own watchlist. Keep
+            an exclude list of calls or prefixes you never want to see again. Spots are retained for thirty minutes, so
+            you see the trend on a band — not just whoever spotted last. Four things on this panel are new since spring.
+            There's a real mode column now, with sorting by time, frequency, or call. There's a one-click "show only
+            DXpeditions" filter — it cross-references the DXpedition calendar, so the list collapses to just the ATNOs.
+            There's a contest filter, for taming the firehose on contest weekends. And you can now send a spot straight
+            from the panel — no separate telnet session. Below it, PSKReporter runs live over MQTT — not the old
+            five-minute polling. Who's hearing you, who you're hearing — and MySpots lights up the moment your call hits
+            the cluster.
           </aside>
         </section>
 
@@ -585,12 +599,14 @@
             Born after a public node sysop suggested we <strong>"build our own cluster."</strong> OK. Done.
           </p>
           <aside class="notes">
-            This is the newest thing in the whole deck — shipped THIS WEEK in the July drop. The story lands well: the
-            hosted site used to ride on public DXSpider nodes, which produced reconnect storms and login-hammering
-            incidents when upstreams went sideways. One sysop suggested we build our own node. So we did — it ingests
-            the Reverse Beacon Network skimmer feeds (CW/RTTY and FT8/FT4) plus human spots, and serves a classic
-            telnet cluster interface, so you can even point your regular logging program at it. In memory of WB0OEW in
-            the login banner.
+            Now — about where those spots come from. This shipped this week, and it's my favorite story in the deck.
+            OpenHamClock now runs its own DX cluster node. The hosted site used to connect to public DXSpider nodes,
+            like everybody else — and when an upstream node had a bad day, we had a bad day. Reconnect storms, login
+            problems, the works. At one point a node sysop suggested — maybe with some exasperation — that we should go
+            build our own cluster. [Beat.] OK. Done. OHC Cluster ingests the Reverse Beacon Network skimmer feeds — CW
+            and RTTY on one pipe, FT8 and FT4 on another — plus human spots. And it serves a classic telnet interface,
+            which means you don't need OpenHamClock to use it. You can point your regular logging program at it like any
+            other node. And one touch I like: the telnet login banner is dedicated to the memory of Elwood, WB0OEW.
           </aside>
         </section>
 
@@ -618,11 +634,15 @@
             </div>
           </div>
           <aside class="notes">
-            Both of these are pure DXer workflow. The popup means the "who is this guy" reflex doesn't cost you a
-            browser tab and 15 seconds — and it shows local time at the DX end, which is half of deciding whether to
-            sit in the pileup. The DX-target lookup: type a call, and the crosshair, bearing, and distance snap to his
-            QTH. The IANA timezone fix matters more than it sounds — longitude-based time gets places like Manila and
-            Perth visibly wrong.
+            Two smaller things, new this month, that map straight onto DXer reflexes. First, the callsign info popup.
+            You know the reflex — a call you don't recognize hits the cluster, and you open QRZ in another tab to see
+            who it is. Now you just click the call, right in the cluster or on the map, and you get an inline card:
+            name, QTH, grid, country — and my favorite part, the local time at his end. Because half of deciding whether
+            to sit in a pileup is knowing whether the operator is about to go to bed. One more click gets you the full
+            QRZ or HamQTH page if you want it. Second, the DX target now takes a callsign directly. Type a call, and the
+            crosshair, bearing, and distance snap to his QTH. And DX local time uses real timezones now instead of
+            longitude math — which sounds pedantic until you look up somewhere like Manila or Perth, where sun time and
+            civil time disagree by a lot.
           </aside>
         </section>
 
@@ -646,14 +666,18 @@
             </li>
           </ul>
           <aside class="notes">
-            The VOACAP piece is the part this room actually cares about. OHC runs the ITU-R P.533 HF engine itself,
-            every 10 minutes — the band-color overlay on the map IS the prediction, and the heatmap shows per-band
-            reliability by UTC hour for your QTH. Two July fixes worth calling out loud: (1) digital-mode predictions
-            were dishonest before — everything ran at the SSB threshold and FT8 got a post-hoc bonus that couldn't
-            reopen a band SSB had scored at zero. Now the engine runs at each mode's real decode threshold. Real
-            example: Atlanta→Tokyo, 15m, noon — 0% on SSB, 67% on FT8. That matches what you actually hear. (2) The Kp
-            index used to lag up to 3 hours; it now follows NOAA's 1-minute estimated product, so when a G-storm hits
-            you see it immediately. If K is elevated tonight, show the aurora overlay live in the demo.
+            Propagation. Most propagation tools you've used are effectively screenshots. OpenHamClock runs the ITU-R
+            P.533 engine — the same physics VOACAP is built on — itself, every ten minutes. The colored band overlay on
+            the map is a fresh prediction for your QTH, right now. Real-time indices as gauges, solar imagery, X-ray
+            flux so you can see the flare before the band drops out. Two fixes this month are worth calling out. First:
+            if you've ever looked at an FT8 prediction anywhere and thought "that band is NOT closed, I'm watching
+            people work Japan on it" — you were right. Most tools run the engine at SSB thresholds and bolt an FT8 bonus
+            on afterwards. And a bonus can't reopen a band the engine already scored at zero — which is exactly where
+            FT8 earns its keep. OpenHamClock now runs the engine at each mode's real decode threshold — FT8 at minus
+            nineteen dB, WSPR at minus twenty-six, CW at plus five. Real example: Atlanta to Tokyo, 15 meters, noon —
+            zero percent on SSB, sixty-seven percent on FT8. That matches what you actually hear. Second: the Kp index
+            now follows NOAA's one-minute estimate instead of the three-hourly product. So when a geomagnetic storm
+            hits, the console reacts in minutes — and when the bands go weird, you know why right away.
           </aside>
         </section>
 
@@ -681,9 +705,13 @@
             <img src="assets/4.png" alt="POTA activations and contest calendar panel" class="side-shot" />
           </div>
           <aside class="notes">
-            Even in a DX club there are POTA chasers — ask in the chat. The pitch for this room: same map, same
-            filters, same click-to-tune as the DX cluster — and a rare POTA/WWFF entity counts for the chase too.
-            WWBOTA is the new one — bunkers. "Anyone activated a bunker yet?" usually gets a laugh, even on Zoom.
+            Between openings, the same map covers the portable world — POTA, SOTA, WWFF, and WWBOTA, each with its own
+            marker. Click an activator and you get the reference, the callsign, frequency, mode, and when they were
+            spotted. Same filters, same click-to-tune as the DX cluster. And a rare park or flora-and-fauna entity
+            counts for the chase too. WWBOTA is the newest one — bunkers on the air. Old military and civil defense
+            relics. Yes, that's a real program, and yes, it's growing fast. Anyone here activated a bunker yet? Put it
+            in the chat. You can also set audio alerts on a band you're watching — so you can be in the kitchen and
+            still know when someone shows up on 17 meters.
           </aside>
         </section>
 
@@ -704,10 +732,12 @@
             <img src="assets/14.png" alt="Satellite picker settings — full active sat catalog" class="side-shot" />
           </div>
           <aside class="notes">
-            DX via satellite is real DX — grids and DXCC on the birds. QO-100's footprint is fun to show even though
-            it's not workable from Florida. The screenshot on the right is the picker — search/select any satellite
-            from the active TLE catalog and OHC tracks it. The TLE pipeline got hardened over the last two cycles with
-            three independent upstream sources, so the birds don't vanish when CelesTrak has a bad day.
+            Satellites live on the same map as everything else. Live SGP4 tracking, pass predictions for your QTH sorted
+            by next AOS, footprint and ground track drawn right on the map. And grids on the birds are real DX. Pick
+            anything from the active catalog — AO-91, SO-50, the ISS, RS-44, FO-29, or the QO-100 geostationary
+            footprint — and overlay several at once, right next to your DX spots. Behind the scenes, the TLE pipeline
+            now pulls from three independent sources — CelesTrak, AMSAT, and SatNOGS — so the birds don't vanish when
+            one upstream has a bad day.
           </aside>
         </section>
 
@@ -739,12 +769,15 @@
             <strong>N3FJP</strong>? That's built in now too. <span class="new-pill">new</span>
           </p>
           <aside class="notes">
-            For a DX crowd this is about pileup speed: spot appears, click, you're on frequency with the right mode
-            while the other guy is still typing the call into his VFO. WSJT-X relay is the same idea backwards —
-            decoded callsigns appear on the map in real time, so you can *see* the opening build. New this cycle:
-            N3FJP integration is configured right from Settings — logged QSOs and even the call you're currently
-            typing appear on the map (live entry preview). Specific models if asked: FT-991A/891/710/DX10/5000,
-            TS-890/590/2000/480, IC-7300/7610/9700/705/7851, K3/K4.
+            Rig control. Click a spot, your radio tunes — and in a pileup race, that's the difference. The spot appears,
+            you click it, and you're on frequency with the right mode while the other guy is still spinning his VFO.
+            Under the hood there's a plugin layer called the Rig Bridge. It talks to almost any modern radio over almost
+            any transport — direct USB CAT with no hamlib, rigctld if you already run it, flrig, SmartSDR for the
+            Flexes, TCI, even RTL-SDR for receive-only. It goes the other way too. WSJT-X, JTDX, MSHV, and JS8Call
+            stream their decodes onto the map in real time — so you can watch an opening build toward the entity you
+            need before you ever transmit. And new this month: if you log with N3FJP, that's built in now. Configure it
+            from Settings, and your logged QSOs appear on the map. It even plots the call you're currently typing in the
+            entry window as a live preview — so you see the path before you commit the QSO.
           </aside>
         </section>
 
@@ -767,10 +800,15 @@
             Monthly release drops — driven almost entirely by <strong>user bug reports and feature requests</strong>.
           </p>
           <aside class="notes">
-            Rapid-fire slide — 60 seconds, don't dwell. The meta-point matters more than any single item: this project
-            ships monthly, and the two headline fixes in July (FT8 predictions, real-time Kp) both came from users
-            emailing "this looks wrong." If someone on this call finds something wrong, file it — it'll probably be
-            fixed in the next drop.
+            A quick sampler of everything else that's shipped since spring — ten seconds each. A live aircraft layer,
+            and a worldwide ATC sectors overlay — fun for matching what you hear on HF to who owns the airspace. Map
+            style rotation for wall displays, and a magnitude filter on the earthquake layer. Sixteen languages now —
+            Simplified Chinese just joined. A full screen-reader accessibility pass, including a text view of the entire
+            map. The Windows install got overhauled — one line of PowerShell that actually works. And self-hosters now
+            get the real propagation engine in local builds. The reason I show this slide: this project ships a release
+            every month, and the two headline fixes in July — the FT8 predictions and the real-time Kp — both started as
+            users emailing "this looks wrong." If you find something wrong, tell us. It'll probably be fixed in the next
+            drop.
           </aside>
         </section>
 
@@ -792,15 +830,18 @@
             </p>
           </div>
           <aside class="notes">
-            ~5 min here. Zoom notes: share the browser WINDOW, keep the live site in another TAB of the same window,
-            and switch tabs — never switch windows, or viewers see your desktop. Pre-warm the tab before the talk.
-            Invite the audience to open openhamclock.com themselves and follow along — that works great on Zoom.
-            Suggested DX-flavored walk: 1) Map + terminator — point at the gray line. 2) Click a DX cluster spot —
-            great-circle path draws, distance/bearing. 3) Click the callsign — info popup, local time at the DX end.
-            4) "Show only DXpeditions" filter. 5) The send-a-spot button (show it, don't send). 6) PSKReporter pane —
-            MySpots / TX-RX tabs. 7) Propagation panel — flip SSB → FT8, watch bands reopen. 8) Space weather pane —
-            real-time Kp; aurora overlay if K is up. DO NOT live-edit settings. Stay in defaults so nothing goes
-            sideways.
+            OK — enough slides. Let's go look at the real thing. If you want to follow along, it's openhamclock.com,
+            live right now. [Switch to the pre-warmed tab — same window, next tab over.] Here's the map. This line is
+            the day/night terminator, updating live — there's your gray line. [Click a DX spot on another continent.]
+            I'll click this spot — and there's the great-circle path, with distance and bearing. [Click the callsign.]
+            Click the call itself, and there's the new info popup — name, country, grid, and his local time. He's awake.
+            Worth calling. [Toggle "Show only DXpeditions."] Here's the DXpeditions-only filter — the list collapses to
+            just the ATNOs. [Point at the spot button — don't send.] This button sends a spot straight to the cluster
+            from here. I won't send one tonight. [Open PSKReporter.] MySpots, who's hearing me, who I'm hearing — live
+            over MQTT. [Propagation panel: flip SSB to FT8.] Now watch the propagation panel when I flip from SSB to
+            FT8. Same path, same hour — honest FT8 physics. Look at the bands reopen. [Space weather; aurora overlay if
+            K is up.] And real-time Kp, here — updates by the minute now. [Back to the deck tab.] I could click around
+            in this for an hour, but let me come back to the deck so you don't leave without the URLs.
           </aside>
         </section>
 
@@ -821,10 +862,11 @@
             <li>Community AddOns folder for userscripts (APRS auto-pos, calculators, news feeds)</li>
           </ul>
           <aside class="notes">
-            Five months old is the headline — show the velocity. Pull up github.com/accius/openhamclock if you have
-            time and scroll the contributors list. This is a young project that absolutely takes feature requests. For
-            coders on the call: `docs/ARCHITECTURE.md` and `src/plugins/OpenHamClock-Plugin-Guide.md` are the entry
-            points.
+            A little about what's under the hood. It's MIT licensed. Seventeen rig plugins. Sixteen languages. Six-plus
+            map overlays. More than fifty contributors — and the project is about five months old. That velocity is the
+            point. Map overlays are React hooks — if you write JavaScript, you can copy a built-in, edit it, restart,
+            and yours shows up in the layer toggle. And there's an AddOns folder for community userscripts — APRS
+            auto-position, calculators, news feeds.
           </aside>
         </section>
 
@@ -857,9 +899,13 @@ cd openhamclock &amp;&amp; npm ci &amp;&amp; npm start</code></pre>
             </div>
           </div>
           <aside class="notes">
-            Ask the chat: who runs a Pi for ham stuff? The kiosk one-liner is the killer install — fresh Pi, paste,
-            walk away, come back to a wall display. Windows folks: the install experience was overhauled this month —
-            one-line PowerShell install, real updater.
+            How do you get it? Four ways, in order of patience. Zero install: go to openhamclock.com. The wizard asks
+            for your callsign and grid, and you're operating in thirty seconds. Raspberry Pi kiosk: one curl command,
+            and the Pi reboots into a fullscreen wall display. It's happy even on a Pi 3. Local install: clone the repo,
+            npm ci, npm start, open localhost 3000. And Docker, if you want it isolated on your home server. Windows
+            folks — the install experience was overhauled this month. One line of PowerShell and a real updater. If a
+            previous attempt fought you, it's worth a retry. One more thing: if you self-host, all the API calls proxy
+            through your own backend. Nothing about your operating goes anywhere you don't control.
           </aside>
         </section>
 
@@ -880,9 +926,12 @@ cd openhamclock &amp;&amp; npm ci &amp;&amp; npm start</code></pre>
             <li><strong>Plugins / AddOns:</strong> docs walk you through it; happy to mentor</li>
           </ul>
           <aside class="notes">
-            End with a specific ask: file an issue, even if it's "I tried it and didn't like X." Negative feedback is
-            more useful than silence — the July release headliners were literally user emails. Drop the GitHub link in
-            the Zoom chat on this slide.
+            If you take one thing from tonight, take this: try it. openhamclock dot com, no install, thirty seconds. If
+            you find a bug, or there's a feature you want — file a GitHub issue. Negative feedback is worth more than
+            silence, and I showed you two July headliners that started as user emails. The Facebook group "OpenHamClock"
+            is the most active community channel, and there's r/OpenHamClock on Reddit. If you write code, pull requests
+            go against the Staging branch. I'm dropping both links in the Zoom chat right now. [Paste openhamclock.com
+            and github.com/accius/openhamclock into the chat.]
           </aside>
         </section>
 
@@ -900,13 +949,11 @@ cd openhamclock &amp;&amp; npm ci &amp;&amp; npm start</code></pre>
           </p>
           <p class="xsmall muted" style="margin-top: 0.5em">Questions?</p>
           <aside class="notes">
-            Hold here for Q&A. Common questions to be ready for: - "Does it work offline?" — mostly no; some panes do
-            (clock, sat predictions). - "Will it run on my old Pi 3?" — yes, kiosk mode is happy on a Pi 3. - "How is
-            it different from HamClock?" — modern web stack, plugin system, active community. Same spiritual goal. -
-            "Which cluster node does it use?" — our own OHC Cluster node now feeds the hosted site; self-hosters can
-            point anywhere. - "Who funds it?" — it's open source, no funder. Donations welcome but not required.
-            Hosting on openhamclock.com is on me. - "Is my data private?" — yes; self-host if you want zero external
-            dependencies. Otherwise, only public APIs (cluster, PSKReporter) get your callsign.
+            Thanks again to the South Florida DX Association for having me tonight. This project exists because
+            fifty-some people decided to send pull requests to a brand-new repo — and because users keep telling us
+            what's wrong. I'm Chris, K0CJH — my contact is on the screen. What questions do you have? [Watch the chat as
+            well as raised hands. Scripted Q&A answers are in speaker-notes.md — cluster node, FT8 physics, logbooks,
+            offline, Pi 3, HamClock differences, funding, privacy.]
           </aside>
         </section>
       </div>
