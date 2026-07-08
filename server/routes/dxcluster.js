@@ -1116,6 +1116,17 @@ module.exports = function (app, ctx) {
   const dxSpotPathsCacheByKey = new Map();
   const DXPATHS_CACHE_TTL = 25000; // 25 seconds cache (just under 30s poll interval to maximize cache hits)
   const DXPATHS_RETENTION = 30 * 60 * 1000; // 30 minute spot retention
+  // DXpedition-tagged paths get longer retention and are exempt from display
+  // caps: under RBN skimmer volume (OHC Cluster source) the newest-100 window
+  // spans only a few minutes, which starved the dxpeditionsOnly filter of the
+  // handful of spots it exists to surface.
+  const DXPEDITION_RETENTION = 60 * 60 * 1000;
+  const isPathLive = (p, now) => now - p.timestamp < (p.isDXpedition ? DXPEDITION_RETENTION : DXPATHS_RETENTION);
+  const capWithDXpeditions = (paths, limit) => {
+    const dxpeditions = paths.filter((p) => p.isDXpedition);
+    const regular = paths.filter((p) => !p.isDXpedition).slice(0, limit);
+    return [...dxpeditions, ...regular].sort((a, b) => b.timestamp - a.timestamp);
+  };
   const DXPATHS_MAX_KEYS = 100; // Hard cap on cache keys
 
   // Periodic cleanup: purge stale dxSpotPaths entries every 5 minutes
@@ -1901,8 +1912,8 @@ module.exports = function (app, ctx) {
 
       if (newSpots.length === 0) {
         // Return existing paths if fetch failed
-        const validPaths = pathsCache.allPaths.filter((p) => now - p.timestamp < DXPATHS_RETENTION);
-        return res.json(validPaths.slice(0, 50));
+        const validPaths = pathsCache.allPaths.filter((p) => isPathLive(p, now));
+        return res.json(capWithDXpeditions(validPaths, 50));
       }
 
       // Get unique callsigns to look up (sanitize and strip modifiers)
@@ -2149,7 +2160,7 @@ module.exports = function (app, ctx) {
         .filter(Boolean);
 
       // Merge with existing paths, removing expired and duplicates
-      const existingValidPaths = pathsCache.allPaths.filter((p) => now - p.timestamp < DXPATHS_RETENTION);
+      const existingValidPaths = pathsCache.allPaths.filter((p) => isPathLive(p, now));
 
       // Add new paths, avoiding duplicates (same dxCall+freq within 2 minutes)
       const mergedPaths = [...existingValidPaths];
@@ -2161,7 +2172,10 @@ module.exports = function (app, ctx) {
       }
 
       // Sort by timestamp (newest first) and limit
-      const sortedPaths = mergedPaths.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100);
+      const sortedPaths = capWithDXpeditions(
+        mergedPaths.sort((a, b) => b.timestamp - a.timestamp),
+        100,
+      );
 
       logDebug(
         '[DX Paths]',
@@ -2192,12 +2206,12 @@ module.exports = function (app, ctx) {
 
       // Update cache
       dxSpotPathsCacheByKey.set(cacheKey, {
-        paths: sortedPaths.slice(0, 50), // Return 50 for display
+        paths: capWithDXpeditions(sortedPaths, 50), // Return 50 for display
         allPaths: sortedPaths, // Keep all for accumulation
         timestamp: now,
       });
 
-      res.json(sortedPaths.slice(0, 50));
+      res.json(capWithDXpeditions(sortedPaths, 50));
     } catch (error) {
       logErrorOnce('DX Paths', error.message);
       // Return cached data on error
