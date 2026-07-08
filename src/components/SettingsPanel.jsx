@@ -113,6 +113,7 @@ export const SettingsPanel = ({
   const [wsjtxMulticastAddress, setWsjtxMulticastAddress] = useState(
     config?.wsjtxRelayMulticast.address || '224.0.0.1',
   );
+
   // Local-only integration flags
   const [n3fjpEnabled, setN3fjpEnabled] = useState(() => {
     try {
@@ -121,6 +122,24 @@ export const SettingsPanel = ({
       return false;
     }
   });
+  const [n3fjpHost, setN3fjpHost] = useState(() => {
+    try {
+      return localStorage.getItem('ohc_n3fjp_host') || 'localhost';
+    } catch {
+      return 'localhost';
+    }
+  });
+
+  const [n3fjpPort, setN3fjpPort] = useState(() => {
+    try {
+      return localStorage.getItem('ohc_n3fjp_port') || '1100';
+    } catch {
+      return '1100';
+    }
+  });
+
+  const [n3fjpTesting, setN3fjpTesting] = useState(false);
+  const [n3fjpMessage, setN3fjpMessage] = useState(null);
 
   // DX Weather (local-only)
   const [dxWeatherEnabled, setDxWeatherEnabled] = useState(() => {
@@ -154,6 +173,12 @@ export const SettingsPanel = ({
       return '#ffaa00';
     }
   });
+
+  // N3FJP BACKEND CONFIG STATES
+  // (Disabled here because they are already declared elsewhere in this file)
+  // const [n3fjpHost, setN3fjpHost] = useState('127.0.0.1');
+  // const [n3fjpPort, setN3fjpPort] = useState('1100');
+  const [n3fjpBridgeActive, setN3fjpBridgeActive] = useState(false);
 
   // Monospace font for panels/data displays (#923 — 0/8 readability)
   const [monoFont, setMonoFont] = useState(() => {
@@ -207,6 +232,13 @@ export const SettingsPanel = ({
   const [qrzStatus, setQrzStatus] = useState(null); // { configured, hasSession, source, ... }
   const [qrzTesting, setQrzTesting] = useState(false);
   const [qrzMessage, setQrzMessage] = useState(null); // { type: 'success'|'error', text }
+
+  // HamQTH XML Search API state
+  const [hamqthUsername, setHamqthUsername] = useState('');
+  const [hamqthPassword, setHamqthPassword] = useState('');
+  const [hamqthStatus, setHamqthStatus] = useState(null); // { configured, hasSession, source, ... }
+  const [hamqthTesting, setHamqthTesting] = useState(false);
+  const [hamqthMessage, setHamqthMessage] = useState(null); // { type: 'success'|'error', text }
 
   const refreshProfiles = () => {
     setProfilesList(getProfiles());
@@ -272,22 +304,28 @@ export const SettingsPanel = ({
     }
   }, [isOpen]);
 
-  // Keep N3FJP toggle/settings in sync with localStorage when opening settings
+  // Keep N3FJP toggle/settings in sync with config/localStorage when opening settings
   useEffect(() => {
     if (!isOpen) return;
     try {
-      setN3fjpEnabled(localStorage.getItem('ohc_n3fjp_enabled') === '1');
+      const localEnabled = localStorage.getItem('ohc_n3fjp_enabled');
+      setN3fjpEnabled(localEnabled !== null ? localEnabled === '1' : !!config?.n3fjpEnabled);
+      setN3fjpHost(localStorage.getItem('ohc_n3fjp_host') || config?.n3fjpHost || '127.0.0.1');
+      setN3fjpPort(localStorage.getItem('ohc_n3fjp_port') || (config?.n3fjpPort ? String(config.n3fjpPort) : '1100'));
+
       const v = parseInt(localStorage.getItem('n3fjp_display_minutes') || '15', 10);
       setN3fjpDisplayMinutes(Number.isFinite(v) ? v : 15);
       setN3fjpLineColor(localStorage.getItem('n3fjp_line_color') || '#3388ff');
       setN3fjpPreviewLineColor(localStorage.getItem('n3fjp_preview_line_color') || '#ffaa00');
     } catch {
-      setN3fjpEnabled(false);
+      setN3fjpEnabled(!!config?.n3fjpEnabled || false);
+      setN3fjpHost(config?.n3fjpHost || '127.0.0.1');
+      setN3fjpPort(config?.n3fjpPort ? String(config.n3fjpPort) : '1100');
       setN3fjpDisplayMinutes(15);
       setN3fjpLineColor('#3388ff');
       setN3fjpPreviewLineColor('#ffaa00');
     }
-  }, [isOpen]);
+  }, [isOpen, config]);
 
   // Load layers when panel opens
   useEffect(() => {
@@ -311,13 +349,20 @@ export const SettingsPanel = ({
     }
   }, [isOpen, activeTab]);
 
-  // Fetch QRZ status when profiles tab opens
+  // Fetch QRZ and HamQTH status when profiles tab opens
   useEffect(() => {
     if (isOpen && activeTab === 'profiles') {
-      fetch('/api/qrz/status')
-        .then((r) => r.json())
-        .then((data) => setQrzStatus(data))
-        .catch(() => setQrzStatus(null));
+      Promise.all([
+        fetch('/api/qrz/status')
+          .then((r) => r.json())
+          .catch(() => null),
+        fetch('/api/hamqth/status')
+          .then((r) => r.json())
+          .catch(() => null),
+      ]).then(([qrz, hamqth]) => {
+        setQrzStatus(qrz);
+        setHamqthStatus(hamqth);
+      });
     }
   }, [isOpen, activeTab]);
 
@@ -508,6 +553,10 @@ export const SettingsPanel = ({
         // cloudRelaySession intentionally omitted — session ID belongs in
         // localStorage (per-browser), not in the shared server config.
       },
+      n3fjpHost: String(n3fjpHost || '').trim() || '127.0.0.1',
+      n3fjpPort: parseInt(n3fjpPort, 10) || 1100,
+      n3fjpEnabled: !!n3fjpEnabled,
+      n3fjpBridgeActive: !!n3fjpBridgeActive, // 👈 Add this right here!
     });
   };
 
@@ -595,8 +644,10 @@ export const SettingsPanel = ({
     return t == 'imperial' ? 'US Customary' : 'Metric';
   };
 
-  // Set a sane default if we are not a local installation and we have 'udp' set as the dxClusterSource.
-  if (!isLocalInstall && dxClusterSource === 'udp') setDxClusterSource('auto');
+  // Hosted site is locked to our own cluster: user-directed sources (UDP,
+  // custom telnet) only exist on local installs, where they run under the
+  // user's own callsign. Coerce any stale saved value back to auto.
+  if (!isLocalInstall && (dxClusterSource === 'udp' || dxClusterSource === 'custom')) setDxClusterSource('auto');
 
   return (
     <div
@@ -2186,35 +2237,62 @@ export const SettingsPanel = ({
                 >
                   {t('station.settings.dx.title')}
                 </label>
-                <select
-                  value={dxClusterSource}
-                  onChange={(e) => setDxClusterSource(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: 'var(--bg-tertiary)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '6px',
-                    color: 'var(--accent-green)',
-                    fontSize: '14px',
-                    fontFamily: 'var(--font-mono)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="dxspider-proxy">{t('station.settings.dx.option1')}</option>
-                  <option value="hamqth">{t('station.settings.dx.option2')}</option>
-                  <option value="dxwatch">{t('station.settings.dx.option3')}</option>
-                  <option value="auto">{t('station.settings.dx.option4')}</option>
-                  <option value="custom">{t('station.settings.dx.custom.option')}</option>
-                  {isLocalInstall && (
-                    <option value="udp">
-                      {t('station.settings.dx.udp.option', { defaultValue: 'UDP Spots (Local Network)' })}
-                    </option>
-                  )}
-                </select>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                  {t('station.settings.dx.describe')}
-                </div>
+                {isLocalInstall ? (
+                  <>
+                    <select
+                      value={dxClusterSource}
+                      onChange={(e) => setDxClusterSource(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '6px',
+                        color: 'var(--accent-green)',
+                        fontSize: '14px',
+                        fontFamily: 'var(--font-mono)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="dxspider-proxy">{t('station.settings.dx.option1')}</option>
+                      <option value="hamqth">{t('station.settings.dx.option2')}</option>
+                      <option value="dxwatch">{t('station.settings.dx.option3')}</option>
+                      <option value="auto">{t('station.settings.dx.option4')}</option>
+                      <option value="custom">{t('station.settings.dx.custom.option')}</option>
+                      <option value="udp">
+                        {t('station.settings.dx.udp.option', { defaultValue: 'UDP Spots (Local Network)' })}
+                      </option>
+                    </select>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      {t('station.settings.dx.describe')}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Hosted site: source is locked to the OpenHamClock Cluster. */}
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '6px',
+                        color: 'var(--accent-green)',
+                        fontSize: '14px',
+                        fontFamily: 'var(--font-mono)',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      {t('station.settings.dx.hostedLocked', { defaultValue: 'OpenHamClock Cluster' })} 🔒
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      {t('station.settings.dx.hostedLockedDescribe', {
+                        defaultValue:
+                          'The hosted site uses our own cluster node. Run your own OpenHamClock to connect to a custom cluster with your callsign.',
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
 
               {dxClusterSource === 'udp' && (
@@ -2786,6 +2864,7 @@ export const SettingsPanel = ({
                         gap: 8,
                         fontFamily: 'var(--font-mono)',
                         fontSize: 12,
+                        cursor: isLocalInstall ? 'pointer' : 'default',
                       }}
                     >
                       <input
@@ -2802,13 +2881,11 @@ export const SettingsPanel = ({
                             window.dispatchEvent(new Event('ohc-n3fjp-config-changed'));
                           } catch {}
 
-                          // ✅ Also toggle the map layer automatically
+                          // Toggle the map layer automatically
                           try {
-                            // Preferred: uses live WorldMap controls (updates state + localStorage)
                             if (window.hamclockLayerControls?.toggleLayer) {
                               window.hamclockLayerControls.toggleLayer('n3fjp_logged_qsos', next);
                             } else {
-                              // Fallback: write the plugin-layer setting directly
                               const raw = localStorage.getItem('openhamclock_mapSettings') || '{}';
                               const settings = JSON.parse(raw);
                               const layers = settings.layers || {};
@@ -2823,8 +2900,172 @@ export const SettingsPanel = ({
                     </label>
                   </div>
 
-                  {/* Simple config */}
-                  <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                  {/* Form Controls Container */}
+                  <div style={{ marginTop: '12px', opacity: n3fjpEnabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <label
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        N3FJP Host:
+                      </label>
+                      <input
+                        disabled={!isLocalInstall || !n3fjpEnabled || n3fjpTesting}
+                        type="text"
+                        placeholder="Host IP / Name (e.g., localhost)"
+                        value={n3fjpHost}
+                        onChange={(e) => setN3fjpHost(e.target.value)}
+                        style={{
+                          flex: '2 1 180px',
+                          padding: '8px 12px',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px',
+                          color: 'var(--text-primary)',
+                          fontSize: '12px',
+                          fontFamily: 'var(--font-mono)',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+
+                      <label
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap',
+                          marginLeft: '8px',
+                        }}
+                      >
+                        Port:
+                      </label>
+                      <input
+                        disabled={!isLocalInstall || !n3fjpEnabled || n3fjpTesting}
+                        type="text"
+                        placeholder="1100"
+                        value={n3fjpPort}
+                        onChange={(e) => setN3fjpPort(e.target.value)}
+                        style={{
+                          flex: '1 1 80px',
+                          padding: '8px 12px',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '4px',
+                          color: 'var(--text-primary)',
+                          fontSize: '12px',
+                          fontFamily: 'var(--font-mono)',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+
+                      <button
+                        disabled={
+                          !isLocalInstall ||
+                          n3fjpTesting ||
+                          (n3fjpEnabled && (!n3fjpHost.trim() || !String(n3fjpPort).trim()))
+                        }
+                        onClick={async () => {
+                          setN3fjpTesting(true);
+                          setN3fjpMessage(null);
+                          try {
+                            const res = await fetch('/api/n3fjp/configure', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                host: String(n3fjpHost || '').trim(),
+                                port: String(n3fjpPort || '').trim(),
+                                enabled: !!n3fjpEnabled,
+                              }),
+                            });
+
+                            const data = await res.json();
+
+                            if (data.success) {
+                              setN3fjpMessage({
+                                type: 'success',
+                                text: data.message || 'Settings updated successfully!',
+                              });
+                            } else {
+                              setN3fjpMessage({
+                                type: 'error',
+                                text: data.error || 'Configuration failed.',
+                              });
+                            }
+                          } catch (e) {
+                            setN3fjpMessage({
+                              type: 'error',
+                              text: 'Bridge communication error.',
+                            });
+                          }
+                          setN3fjpTesting(false);
+                        }}
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor:
+                            !isLocalInstall ||
+                            n3fjpTesting ||
+                            (n3fjpEnabled && (!n3fjpHost.trim() || !String(n3fjpPort).trim()))
+                              ? 'not-allowed'
+                              : 'pointer',
+                          background: 'var(--accent-amber)',
+                          color: '#000',
+                          opacity:
+                            !isLocalInstall ||
+                            n3fjpTesting ||
+                            (n3fjpEnabled && (!n3fjpHost.trim() || !String(n3fjpPort).trim()))
+                              ? 0.5
+                              : 1,
+                        }}
+                      >
+                        {n3fjpTesting ? 'Testing...' : 'Save & Test'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline Action Message Window */}
+                  {n3fjpMessage && (
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        padding: '6px 10px',
+                        borderRadius: '4px',
+                        background:
+                          n3fjpMessage.type === 'success' ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                        color: n3fjpMessage.type === 'success' ? '#2ecc71' : '#e74c3c',
+                        marginTop: '6px',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      {n3fjpMessage.type === 'success' ? '✓' : '✗'} {n3fjpMessage.text}
+                    </div>
+                  )}
+
+                  {/* Simple Display Settings */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 10,
+                      marginTop: 10,
+                      flexWrap: 'wrap',
+                      opacity: n3fjpEnabled ? 1 : 0.5,
+                    }}
+                  >
                     <div style={{ flex: '1 1 160px' }}>
                       <label
                         style={{
@@ -2905,6 +3146,7 @@ export const SettingsPanel = ({
                           border: '1px solid var(--border-color)',
                           borderRadius: 6,
                           background: 'transparent',
+                          cursor: 'pointer',
                         }}
                       />
                     </div>
@@ -2943,6 +3185,7 @@ export const SettingsPanel = ({
                           border: '1px solid var(--border-color)',
                           borderRadius: 6,
                           background: 'transparent',
+                          cursor: 'pointer',
                         }}
                       />
                     </div>
@@ -2950,74 +3193,15 @@ export const SettingsPanel = ({
 
                   <details style={{ marginTop: 10 }}>
                     <summary
-                      style={{
-                        cursor: 'pointer',
-                        color: 'var(--accent-amber)',
-                        fontSize: 12,
-                        userSelect: 'none',
-                      }}
+                      style={{ cursor: 'pointer', color: 'var(--accent-amber)', fontSize: 12, userSelect: 'none' }}
                     >
                       Learn how
                     </summary>
-
                     <div
-                      style={{
-                        marginTop: 8,
-                        color: 'var(--text-secondary)',
-                        fontSize: 12,
-                        lineHeight: 1.55,
-                      }}
+                      style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: '11px', lineHeight: '1.4' }}
                     >
-                      <div style={{ marginBottom: 6 }}>
-                        <b>Quick start (Local Only):</b>
-                      </div>
-
-                      <ol style={{ margin: 0, paddingLeft: 18 }}>
-                        <li>
-                          Run OpenHamClock locally:
-                          <div style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>npm start</div>
-                          Open the local URL shown in your terminal (example: http://127.0.0.1:3001).
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Install the N3FJP bridge on the same PC (or LAN machine) that can access your N3FJP logger.
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Edit the bridge <b>config.json</b> file and set:
-                          <div style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>
-                            "OHC_BASE_URL": "http://127.0.0.1:3001"
-                          </div>
-                          (Use the exact URL printed by OpenHamClock.)
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Ensure:
-                          <div style={{ fontFamily: 'var(--font-mono)', marginTop: 4 }}>"ENABLE_OHC_HTTP": true</div>
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Start the bridge script (PowerShell or VBS launcher). You should see log messages when QSOs
-                          are entered.
-                        </li>
-
-                        <li style={{ marginTop: 6 }}>
-                          Enable this integration here, then turn on
-                          <b> Logged QSOs (N3FJP)</b> in
-                          <b> Settings → Map Layers</b>.
-                        </li>
-                      </ol>
-
-                      <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)' }}>
-                        Tip: If you see “connection refused,” verify that OpenHamClock is running locally and that the
-                        port matches your
-                        <b> OHC_BASE_URL</b> setting.
-                      </div>
-
-                      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-                        Note: This integration cannot work on the hosted site because it requires access to your local
-                        N3FJP logger and LAN services.
-                      </div>
+                      Ensure TCP API is enabled in N3FJP (Settings &gt; API &gt; TCP Server). Match host IP and port
+                      settings.
                     </div>
                   </details>
                 </div>
@@ -3041,7 +3225,7 @@ export const SettingsPanel = ({
                       gap: '8px',
                     }}
                   >
-                    <span>📡 QRZ.com Callsign Lookup</span>
+                    <span>📻 QRZ.com Callsign Lookup</span>
                     {qrzStatus?.configured && (
                       <span
                         style={{
@@ -3224,6 +3408,210 @@ export const SettingsPanel = ({
                           }}
                         >
                           {qrzMessage.type === 'success' ? '✓' : '✗'} {qrzMessage.text}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* HamQTH XML Search API Credentials */}
+                <div
+                  style={{
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    paddingTop: 12,
+                    marginTop: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: 'var(--accent-amber)',
+                      marginBottom: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span>📡 HamQTH Callsign Lookup</span>
+                    {hamqthStatus?.configured && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: '500',
+                          padding: '1px 6px',
+                          borderRadius: '3px',
+                          background: hamqthStatus.hasSession ? 'rgba(46, 204, 113, 0.15)' : 'rgba(241, 196, 15, 0.15)',
+                          color: hamqthStatus.hasSession ? '#2ecc71' : '#f1c40f',
+                        }}
+                      >
+                        {hamqthStatus.hasSession ? '● Connected' : '○ Configured'}
+                        {hamqthStatus.source === 'env' ? ' (env)' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', lineHeight: 1.4 }}>
+                    Enables precise station locations and detailed information from{' '}
+                    <a
+                      href="https://www.hamqth.com"
+                      target="_blank"
+                      rel="noopener"
+                      style={{ color: 'var(--accent-blue)' }}
+                    >
+                      HamQTH.com
+                    </a>{' '}
+                    user profiles (names, user-supplied details, grid squares). Without this, data falls back to the
+                    simple HamQTH DXCC API.
+                    <br />
+                    <strong>Note</strong> this is a server setting and is related to the extra data in popup shown when
+                    clicking callsigns. If you are not running a server, you will likely not have the permissions to
+                    change this.
+                  </div>
+                  {hamqthStatus?.source === 'env' ? (
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--text-muted)',
+                        padding: '8px',
+                        background: 'var(--bg-primary)',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      ✓ Credentials configured via{' '}
+                      <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '2px' }}>
+                        HAMQTH_USERNAME
+                      </code>{' '}
+                      /
+                      <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '2px' }}>
+                        HAMQTH_PASSWORD
+                      </code>{' '}
+                      in .env file
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                        <input
+                          disabled={!isLocalInstall}
+                          type="text"
+                          placeholder="HamQTH Username (callsign)"
+                          value={hamqthUsername}
+                          onChange={(e) => setHamqthUsername(e.target.value)}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            background: 'var(--bg-primary)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '4px',
+                            color: 'var(--text-primary)',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-mono)',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <input
+                          disabled={!isLocalInstall}
+                          type="password"
+                          placeholder="HamQTH Password"
+                          value={hamqthPassword}
+                          onChange={(e) => setHamqthPassword(e.target.value)}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            background: 'var(--bg-primary)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '4px',
+                            color: 'var(--text-primary)',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-mono)',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          disabled={
+                            !isLocalInstall || hamqthTesting || !hamqthUsername.trim() || !hamqthPassword.trim()
+                          }
+                          onClick={async () => {
+                            setHamqthTesting(true);
+                            setHamqthMessage(null);
+                            try {
+                              const res = await fetch('/api/hamqth/configure', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  username: hamqthUsername.trim(),
+                                  password: hamqthPassword.trim(),
+                                }),
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                setHamqthMessage({ type: 'success', text: 'Connected to HamQTH successfully!' });
+                                setHamqthPassword('');
+                                const st = await fetch('/api/hamqth/status').then((r) => r.json());
+                                setHamqthStatus(st);
+                              } else {
+                                setHamqthMessage({ type: 'error', text: data.error || 'Login failed' });
+                              }
+                            } catch (e) {
+                              setHamqthMessage({ type: 'error', text: 'Connection error' });
+                            }
+                            setHamqthTesting(false);
+                          }}
+                          style={{
+                            padding: '6px 14px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            borderRadius: '4px',
+                            border: 'none',
+                            cursor:
+                              hamqthTesting || !hamqthUsername.trim() || !hamqthPassword.trim()
+                                ? 'not-allowed'
+                                : 'pointer',
+                            background: 'var(--accent-amber)',
+                            color: '#000',
+                            opacity: hamqthTesting || !hamqthUsername.trim() || !hamqthPassword.trim() ? 0.5 : 1,
+                          }}
+                        >
+                          {hamqthTesting ? 'Testing...' : 'Save & Test'}
+                        </button>
+                        {hamqthStatus?.configured && hamqthStatus.source !== 'env' && (
+                          <button
+                            onClick={async () => {
+                              await fetch('/api/hamqth/remove', { method: 'POST' });
+                              setHamqthUsername('');
+                              setHamqthPassword('');
+                              setHamqthMessage(null);
+                              const st = await fetch('/api/hamqth/status').then((r) => r.json());
+                              setHamqthStatus(st);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '11px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)',
+                              cursor: 'pointer',
+                              background: 'transparent',
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      {hamqthMessage && (
+                        <div
+                          style={{
+                            marginTop: '6px',
+                            fontSize: '11px',
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            background:
+                              hamqthMessage.type === 'success' ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                            color: hamqthMessage.type === 'success' ? '#2ecc71' : '#e74c3c',
+                          }}
+                        >
+                          {hamqthMessage.type === 'success' ? '✓' : '✗'} {hamqthMessage.text}
                         </div>
                       )}
                     </>
