@@ -137,6 +137,16 @@ const CONFIG = {
         return !(process.env.CELESTRAK_ENABLED && process.env.CELESTRAK_ENABLED === 'false');
       },
     },
+    amsat_tle: {
+      get enabled() {
+        return !(process.env.AMSAT_TLE_ENABLED && process.env.AMSAT_TLE_ENABLED === 'false');
+      },
+    },
+    satnogs_tle: {
+      get enabled() {
+        return !(process.env.SATNOGS_TLE_ENABLED && process.env.SATNOGS_TLE_ENABLED === 'false');
+      },
+    },
     spaceTrack: {
       // (do not expose usernames/passwords to frontend)
       _username: process.env.SPACE_TRACK_USERNAME || '',
