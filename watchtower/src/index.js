@@ -7,8 +7,8 @@
  * goes down is useless. CF runs the prober outside Railway's blast radius.
  *
  * Probes (every 1 min):
- *   - openhamclock.com /api/health  (also reads subsystems: fletcher, rbn,
- *                                    satellites, propagation)
+ *   - openhamclock.com /api/health  (also reads subsystems: fletcher,
+ *                                    ohc-cluster, rbn, satellites, propagation)
  *   - proppy-production.up.railway.app /api/version
  *   - spider-production.up.railway.app /health
  *
@@ -117,7 +117,7 @@ function parseOpenHamClock(body) {
   });
 
   const subs = data.subsystems || {};
-  for (const key of ['fletcher', 'rbn', 'satellites', 'propagation']) {
+  for (const key of ['fletcher', 'ohc-cluster', 'rbn', 'satellites', 'propagation']) {
     const s = subs[key];
     if (!s) continue;
     out.push({
