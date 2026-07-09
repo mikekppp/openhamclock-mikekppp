@@ -7,8 +7,8 @@
  * goes down is useless. CF runs the prober outside Railway's blast radius.
  *
  * Probes (every 1 min):
- *   - openhamclock.com /api/health  (also reads subsystems: fletcher, rbn,
- *                                    satellites, propagation)
+ *   - openhamclock.com /api/health  (also reads subsystems: fletcher,
+ *                                    ohc-cluster, rbn, satellites, propagation)
  *   - proppy-production.up.railway.app /api/version
  *   - spider-production.up.railway.app /health
  *
@@ -59,6 +59,23 @@ const SERVICES = [
   {
     name: 'spider',
     url: 'https://spider-production-1ec7.up.railway.app/health',
+    parse: parseSimple200,
+    railwayEnv: 'production',
+  },
+  // Direct probes for fletcher + the OHC Cluster node: the /api/health
+  // subsystem checks above cover the private-network path the app uses,
+  // but these keep alerting even when the main app itself is down.
+  {
+    name: 'fletcher',
+    url: 'https://fletcher-production.up.railway.app/health',
+    parse: parseSimple200,
+    railwayEnv: 'production',
+  },
+  {
+    name: 'ohc-cluster',
+    // NOTE: the domain's target port must be 3002 (the HTTP API) — telnet
+    // (7300) is exposed separately via the Railway TCP proxy.
+    url: 'https://ohc-cluster-production.up.railway.app/health',
     parse: parseSimple200,
     railwayEnv: 'production',
   },
@@ -117,7 +134,7 @@ function parseOpenHamClock(body) {
   });
 
   const subs = data.subsystems || {};
-  for (const key of ['fletcher', 'rbn', 'satellites', 'propagation']) {
+  for (const key of ['fletcher', 'ohc-cluster', 'rbn', 'satellites', 'propagation']) {
     const s = subs[key];
     if (!s) continue;
     out.push({
