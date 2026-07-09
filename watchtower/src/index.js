@@ -62,6 +62,21 @@ const SERVICES = [
     parse: parseSimple200,
     railwayEnv: 'production',
   },
+  // Direct probes for fletcher + the OHC Cluster node: the /api/health
+  // subsystem checks above cover the private-network path the app uses,
+  // but these keep alerting even when the main app itself is down.
+  {
+    name: 'fletcher',
+    url: 'https://fletcher-production.up.railway.app/health',
+    parse: parseSimple200,
+    railwayEnv: 'production',
+  },
+  {
+    name: 'ohc-cluster',
+    url: 'https://ohc-cluster-production.openhamclock.com/health',
+    parse: parseSimple200,
+    railwayEnv: 'production',
+  },
 ];
 
 const STATUS_COLORS = {
